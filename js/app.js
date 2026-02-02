@@ -929,9 +929,7 @@ async function loadData() {
             data = await response.json();
         }
 
-        if (data.length === 0) {
-            alert("❌ Alerta: Se descargaron 0 registros. Verifica la base de datos.");
-        }
+
 
         // Process and categorize transactions
         allTransactions = processTransactions(data);
@@ -943,11 +941,6 @@ async function loadData() {
         populateYearDropdown(allTransactions);
 
         // Initial render
-        // FORCE 'ALL' PERIOD INITIALLY TO DEBUG VISIBILITY
-        currentPeriod = 'all';
-        const periodSelect = document.getElementById('period-select');
-        if (periodSelect) periodSelect.value = 'all';
-
         refreshDashboard();
 
         // Setup interactions
@@ -955,7 +948,6 @@ async function loadData() {
         setupFilters();
 
     } catch (error) {
-        alert("❌ Error Crítico: " + error.message);
         console.error("Error loading data:", error);
         const topBar = document.querySelector('.top-bar');
         if (topBar) {
