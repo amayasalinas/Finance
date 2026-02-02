@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <script>
+        // Auth Check
+        if (!localStorage.getItem('isLoggedIn')) {
+            window.location.href = 'login.html';
+        }
+    </script>
+    <script src="js/auth.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mi Panel Financiero | Dashboard 2025</title>
+    <meta name="description" content="Panel financiero personal para visualizar y analizar movimientos bancarios">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="styles/main.css">
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+    <div class="dashboard-wrapper">
+        <!-- Sidebar / Navigation (Compact) -->
+        <aside class="sidebar glass-panel">
+            <div class="logo">
+                <span class="logo-icon">💰</span>
+                <span class="logo-text">Finanzas</span>
+            </div>
+            <nav>
+                <div class="nav-item active" data-view="resumen">
+                    <i data-lucide="layout-dashboard"></i>
+                    <span>Resumen</span>
+                </div>
+                <div class="nav-item" data-view="ingresos">
+                    <i data-lucide="trending-up"></i>
+                    <span>Ingresos</span>
+                </div>
+                <div class="nav-item" data-view="gastos">
+                    <i data-lucide="trending-down"></i>
+                    <span>Gastos</span>
+                </div>
+                <div class="nav-item" onclick="logout()" style="margin-top: auto; color: var(--danger);">
+                    <i data-lucide="log-out"></i>
+                    <span>Salir</span>
+                </div>
+            </nav>
+            <div class="sidebar-footer">
+                <i data-lucide="database"></i>
+                <small id="transaction-count">0 transacciones</small>
+            </div>
+        </aside>
+
+        <!-- Main Content Arena -->
+        <main class="main-arena">
+            <!-- Top Bar / Header (Compacto) -->
+            <header class="top-bar glass-panel">
+                <div class="header-left">
+                    <h1>Mi Panel Financiero</h1>
+                    <span class="last-update" id="last-update">Datos hasta: --</span>
+                </div>
+                <div class="header-actions">
+                    <div class="period-selector">
+                        <label for="period-select">Período:</label>
+                        <select id="period-select" class="select-input">
+                            <option value="month">Este mes</option>
+                            <option value="3months">Últimos 3 meses</option>
+                            <option value="6months" selected>Últimos 6 meses</option>
+                            <option value="year">Por Año</option>
+                            <option value="all">Todo</option>
+                        </select>
+                        <select id="year-select" class="select-input hidden">
+                            <!-- Populated by JS -->
+                        </select>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Views Container -->
+            <div id="view-resumen" class="content-view active">
+                <!-- KPIs Section - 4 Cards -->
+                <section class="kpi-section">
+                    <div class="glass-panel kpi-card" id="kpi-balance">
+                        <div class="kpi-icon balance-icon">
+                            <i data-lucide="wallet"></i>
+                        </div>
+                        <div class="kpi-content">
+                            <span class="kpi-label">Balance del Período</span>
+                            <h2 class="kpi-value" id="balance-value">...</h2>
+                            <span class="kpi-comparison" id="balance-comparison"></span>
+                        </div>
+                        <div class="kpi-indicator" id="balance-indicator"></div>
+                    </div>
+
+                    <div class="glass-panel kpi-card" id="kpi-savings-rate">
+                        <div class="kpi-icon savings-icon">
+                            <i data-lucide="piggy-bank"></i>
+                        </div>
+                        <div class="kpi-content">
+                            <span class="kpi-label">Tasa de Ahorro</span>
+                            <h2 class="kpi-value" id="savings-rate-value">...</h2>
+                            <div class="mini-gauge" id="savings-gauge">
+                                <div class="gauge-fill" id="gauge-fill"></div>
+                            </div>
+                        </div>
+                        <div class="kpi-indicator" id="savings-indicator"></div>
+                    </div>
+
+                    <div class="glass-panel kpi-card" id="kpi-income">
+                        <div class="kpi-icon income-icon">
+                            <i data-lucide="arrow-up-circle"></i>
+                        </div>
+                        <div class="kpi-content">
+                            <span class="kpi-label">Total Ingresos</span>
+                            <h2 class="kpi-value" id="income-value">...</h2>
+                            <span class="kpi-sub" id="income-count">0 transacciones</span>
+                        </div>
+                        <div class="kpi-indicator positive"></div>
+                    </div>
+
+                    <div class="glass-panel kpi-card" id="kpi-expenses">
+                        <div class="kpi-icon expense-icon">
+                            <i data-lucide="arrow-down-circle"></i>
+                        </div>
+                        <div class="kpi-content">
+                            <span class="kpi-label">Total Gastos</span>
+                            <h2 class="kpi-value" id="expenses-value">...</h2>
+                            <span class="kpi-sub" id="expenses-percent">-- del ingreso</span>
+                        </div>
+                        <div class="kpi-indicator" id="expenses-indicator"></div>
+                    </div>
+                </section>
+
+                <!-- Main Content Grid - Two Columns -->
+                <div class="content-grid">
+                    <!-- Left Column (60%) -->
+                    <div class="left-column">
+                        <!-- Monthly Flow Chart -->
+                        <section class="chart-section glass-panel">
+                            <div class="chart-header">
+                                <h3><i data-lucide="bar-chart-3"></i> Flujo de Caja Mensual</h3>
+                            </div>
+                            <div class="chart-body">
+                                <canvas id="monthlyChart"></canvas>
+                            </div>
+                        </section>
+
+                        <!-- Distribution Chart -->
+                        <section class="chart-section glass-panel">
+                            <div class="chart-header">
+                                <h3><i data-lucide="pie-chart"></i> Distribución de Gastos</h3>
+                            </div>
+                            <div class="chart-body donut-container">
+                                <canvas id="categoryChart"></canvas>
+                                <div class="donut-center" id="donut-center">
+                                    <span class="donut-total-label">Total</span>
+                                    <span class="donut-total-value" id="donut-total">$0</span>
+                                </div>
+                            </div>
+                        </section>
+                    </div>
+
+                    <!-- Right Column (40%) -->
+                    <div class="right-column">
+                        <!-- Top 5 Categories -->
+                        <section class="glass-panel top-categories">
+                            <h3><i data-lucide="trophy"></i> Top 5 Categorías de Gasto</h3>
+                            <div id="top-categories-list" class="category-bars"></div>
+                        </section>
+
+                        <!-- Period Summary -->
+                        <section class="glass-panel period-summary">
+                            <h3><i data-lucide="clipboard-list"></i> Resumen del Período</h3>
+                            <ul class="summary-list">
+                                <li>
+                                    <span class="summary-label">Promedio diario de gasto</span>
+                                    <span class="summary-value" id="avg-daily">$0</span>
+                                </li>
+                                <li>
+                                    <span class="summary-label">Día con mayor gasto</span>
+                                    <span class="summary-value" id="max-day">--</span>
+                                </li>
+                                <li>
+                                    <span class="summary-label">Categoría dominante</span>
+                                    <span class="summary-value" id="dominant-category">--</span>
+                                </li>
+                                <li>
+                                    <span class="summary-label">Total transacciones</span>
+                                    <span class="summary-value" id="total-transactions">0</span>
+                                </li>
+                            </ul>
+                        </section>
+
+                        <!-- AI Insights -->
+                        <section class="glass-panel insights-panel">
+                            <h3><i data-lucide="sparkles"></i> Insights Automáticos</h3>
+                            <div id="ai-insights" class="insights-content"></div>
+                        </section>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Detailed Expenses View -->
+            <div id="view-gastos" class="content-view">
+                <div class="glass-panel table-container full-height">
+                    <div class="table-header">
+                        <h2><i data-lucide="receipt"></i> Detalle de Gastos</h2>
+                        <div class="table-filters">
+                            <div class="filter-group">
+                                <select id="category-filter" class="select-input">
+                                    <option value="all">Todas las categorías</option>
+                                </select>
+                            </div>
+                            <div class="search-wrapper">
+                                <i data-lucide="search"></i>
+                                <input type="text" id="search-gastos" placeholder="Buscar gasto..."
+                                    class="search-input">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="table-scroll">
+                        <table class="finance-table">
+                            <thead>
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Detalle</th>
+                                    <th>Categoría</th>
+                                    <th>Banco</th>
+                                    <th>Producto</th>
+                                    <th>Número</th>
+                                    <th class="text-right">Valor</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-gastos-body">
+                                <!-- Populated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="table-footer">
+                        <span id="gastos-count">0 gastos</span>
+                        <span id="gastos-total">Total: $0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Detailed Income View -->
+            <div id="view-ingresos" class="content-view">
+                <div class="glass-panel table-container full-height">
+                    <div class="table-header">
+                        <h2><i data-lucide="banknote"></i> Detalle de Ingresos</h2>
+                        <div class="table-filters">
+                            <div class="search-wrapper">
+                                <i data-lucide="search"></i>
+                                <input type="text" id="search-ingresos" placeholder="Buscar ingreso..."
+                                    class="search-input">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="table-scroll">
+                        <table class="finance-table">
+                            <thead>
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Detalle</th>
+                                    <th>Banco</th>
+                                    <th>Producto</th>
+                                    <th>Número</th>
+                                    <th class="text-right">Valor</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-ingresos-body">
+                                <!-- Populated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="table-footer">
+                        <span id="ingresos-count">0 ingresos</span>
+                        <span id="ingresos-total">Total: $0</span>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Logic -->
+    <script src="js/app.js?v=9"></script>
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+    </script>
+</body>
+
+</html>
