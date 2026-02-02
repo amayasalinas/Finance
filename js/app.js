@@ -855,6 +855,25 @@ function setupFilters() {
     if (categoryFilter) {
         categoryFilter.addEventListener('change', applyTableFilters);
     }
+
+    // Reset filter button
+    const resetBtn = document.getElementById('reset-filter-btn');
+    if (resetBtn) {
+        resetBtn.addEventListener('click', () => {
+            // Reset to default period
+            const periodSelect = document.getElementById('period-select');
+            if (periodSelect) {
+                periodSelect.value = '6months';
+                currentPeriod = '6months';
+            }
+            // Hide year selector
+            const yearSelect = document.getElementById('year-select');
+            if (yearSelect) yearSelect.classList.add('hidden');
+
+            // Refresh dashboard
+            refreshDashboard();
+        });
+    }
 }
 
 // ==========================================
