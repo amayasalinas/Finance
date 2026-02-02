@@ -893,17 +893,41 @@ function refreshDashboard() {
 }
 
 // ==========================================
+// SUPABASE CONFIGURATION
+// ==========================================
+const SUPABASE_URL = 'https://iikarklhudhsfvkhhyub.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_PIdI08dSRTLPVauDLxX6Hg_yMEsxwU-';
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ==========================================
 // DATA LOADING
 // ==========================================
 
 async function loadData() {
     try {
-        // Load transaction data with cache busting
-        const response = await fetch('data/movimientos.json?v=' + new Date().getTime());
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+        console.log("Loading data from Supabase...");
+
+        let data = [];
+
+        // 1. Try Supabase
+        try {
+            const { data: dbData, error } = await supabaseClient
+                .from('movimientos')
+                .select('*');
+
+            if (error) throw error;
+            if (dbData) {
+                console.log(`✅ Loaded ${dbData.length} records from Supabase`);
+                data = dbData;
+            }
+        } catch (dbError) {
+            console.error("❌ Supabase Error:", dbError);
+            console.log("⚠️ Falling back to local JSON...");
+            // 2. Fallback to Local JSON
+            const response = await fetch('data/movimientos.json?v=' + new Date().getTime());
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            data = await response.json();
         }
-        const data = await response.json();
 
         // Process and categorize transactions
         allTransactions = processTransactions(data);
@@ -927,7 +951,7 @@ async function loadData() {
         if (topBar) {
             topBar.innerHTML += `
                 <p style="color: var(--danger); font-size: 0.85rem; margin-left: 1rem;">
-                    Error cargando datos. Ejecuta: python -m http.server 8000
+                    Error fatal cargando datos.
                 </p>
             `;
         }
