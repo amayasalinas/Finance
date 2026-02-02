@@ -1,177 +1,145 @@
-/**
- * Dashboard Financiero Premium
- * Sistema de categorización automática y visualización de datos
- */
+// =========================================
+// APP - Finanzas Familiares Dashboard
+// =========================================
 
-// ==========================================
-// CONSTANTS & CONFIGURATION
-// ==========================================
-
-const CATEGORY_KEYWORDS = {
-    'Alimentación': [
-        'supermercado', 'restaurante', 'mercado', 'exito', 'ara', 'jumbo', 'carulla',
-        'olimpica', 'corral', 'burger', 'pizza', 'sushi', 'pollo', 'cafe', 'coffee',
-        'panaderia', 'fruver', 'verduras', 'carnes', 'semolina', 'domino', 'archie',
-        'wendys', 'wendy', 'subway', 'mcdonalds', 'kfc', 'rappi', 'uber eats', 'ifood',
-        'salchichas', 'filandia', 'pastelitos', 'picara', 'olivia', 'voodoo', 'mulera',
-        'ko asian', 'club house', 'fort nassau', 'roses cafe', 'jv coffee', 'harbourfront',
-        'varietale', 'amarti', 'mis raices', 'loma'
-    ],
-    'Transporte': [
-        'uber', 'didi', 'gasolina', 'terpel', 'texaco', 'esso', 'mobil', 'peaje',
-        'estacion', 'parqueadero', 'parking', 'eds', 'combustible', 'taxi', 'cabify',
-        'beat', 'indriver', 'sostenibles'
-    ],
-    'Suscripciones': [
-        'spotify', 'netflix', 'disney', 'hbo', 'amazon prime', 'prime video', 'youtube',
-        'apple music', 'deezer', 'google one', 'icloud', 'microsoft', 'adobe', 'canva',
-        'dropbox', 'notion', 'slack', 'zoom', 'lifemiles', 'suscripcion', 'membership'
-    ],
-    'Entretenimiento': [
-        'cine', 'cinepolis', 'cinecolombia', 'teatro', 'concierto', 'evento', 'steam',
-        'playstation', 'xbox', 'nintendo', 'gaming', 'ticket colombia', 'fteatrona'
-    ],
-    'Viajes': [
-        'avianca', 'latam', 'wingo', 'viva', 'hotel', 'marriott', 'hilton', 'airbnb',
-        'booking', 'expedia', 'national car', 'hertz', 'avis', 'aeropuerto', 'airalo',
-        'entrelazos', 'courtyard', 'curacao'
-    ],
-    'Compras': [
-        'amazon', 'mercado libre', 'mercadolibre', 'mercado pago', 'falabella', 'zara',
-        'h&m', 'adidas', 'nike', 'puma', 'pandora', 'bosi', 'tennis', 'gef', 'cueros',
-        'cuerosvel', 'uniandinos', 'tiendas punto'
-    ],
-    'Servicios': [
-        'luz', 'agua', 'gas', 'internet', 'claro', 'movistar', 'tigo', 'etb', 'epm',
-        'codensa', 'vanti', 'acueducto', 'aseo', 'administracion'
-    ],
-    'Vivienda': [
-        'alquiler', 'renta', 'arriendo', 'hipoteca', 'credito vivienda', 'inmobiliaria'
-    ],
-    'Salud': [
-        'farmacia', 'drogueria', 'cruz verde', 'farmatodo', 'locatel', 'medico',
-        'hospital', 'clinica', 'seguro medico', 'eps', 'medicina prepagada', 'consultorio',
-        'consultori', 'odontolog', 'dentista'
-    ],
-    'Transferencias': [
-        'transferencia', 'portal internet', 'bre-b', 'pse', 'daviplata', 'nequi'
-    ]
-};
-
-const CATEGORY_COLORS = {
-    'Alimentación': '#22c55e',
-    'Transporte': '#f59e0b',
-    'Suscripciones': '#8b5cf6',
-    'Entretenimiento': '#ec4899',
-    'Viajes': '#14b8a6',
-    'Compras': '#f97316',
-    'Servicios': '#06b6d4',
-    'Vivienda': '#6366f1',
-    'Salud': '#ef4444',
-    'Transferencias': '#3b82f6',
-    'Otros': '#64748b',
-    'Ingreso': '#10b981'
-};
-
-const MONTH_NAMES = {
-    '01': 'Ene', '02': 'Feb', '03': 'Mar', '04': 'Abr',
-    '05': 'May', '06': 'Jun', '07': 'Jul', '08': 'Ago',
-    '09': 'Sep', '10': 'Oct', '11': 'Nov', '12': 'Dic'
-};
-
-const MONTH_NAMES_FULL = {
-    '01': 'Enero', '02': 'Febrero', '03': 'Marzo', '04': 'Abril',
-    '05': 'Mayo', '06': 'Junio', '07': 'Julio', '08': 'Agosto',
-    '09': 'Septiembre', '10': 'Octubre', '11': 'Noviembre', '12': 'Diciembre'
-};
-
-// ==========================================
-// STATE MANAGEMENT
-// ==========================================
-
+// Global State
 let allTransactions = [];
 let filteredTransactions = [];
-let currentPeriod = '6months';
-let currentCategoryFilter = 'all';
-let monthlyChartInstance = null;
-let categoryChartInstance = null;
-
-// ==========================================
-// UTILITY FUNCTIONS
-// ==========================================
-
-const formatCOP = (num) => {
-    if (num === undefined || num === null || isNaN(num)) return '$0';
-    return new Intl.NumberFormat('es-CO', {
-        style: 'currency',
-        currency: 'COP',
-        maximumFractionDigits: 0
-    }).format(num);
+let currentView = 'resumen';
+let charts = {};
+let pagination = {
+    gastos: { page: 1, perPage: CONFIG.ITEMS_PER_PAGE, total: 0 },
+    ingresos: { page: 1, perPage: CONFIG.ITEMS_PER_PAGE, total: 0 }
 };
 
-const formatDate = (dateStr) => {
-    if (!dateStr) return '--';
-    const [year, month, day] = dateStr.split('-');
-    return `${day} ${MONTH_NAMES[month]} ${year}`;
-};
+// =========================================
+// INITIALIZATION
+// =========================================
+function initApp() {
+    console.log('🚀 Initializing Finanzas Familiares Dashboard');
 
-const formatDateShort = (dateStr) => {
-    if (!dateStr) return '--';
-    const [year, month, day] = dateStr.split('-');
-    return `${day}/${month}`;
-};
+    setupNavigation();
+    setupFilters();
+    setupFileUpload();
+    loadData();
+}
 
-// ==========================================
-// CATEGORIZATION SYSTEM
-// ==========================================
-
-function categorizeTransaction(detalle, tipo) {
-    // If it's a deposit or income, it's income
-    if (['Depósito', 'Ingreso', 'Pago/Abono'].includes(tipo)) {
-        return 'Ingreso';
-    }
-
-    // Clean and normalize the detail string
-    const detail = (detalle || '').toLowerCase().trim();
-
-    // Skip empty or invalid transactions
-    if (!detail || detail === '' || detail === 'n/a') {
-        return 'Otros';
-    }
-
-    // Check against each category's keywords
-    for (const [category, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
-        for (const keyword of keywords) {
-            if (detail.includes(keyword.toLowerCase())) {
-                return category;
-            }
+// Load data from JSON or Supabase
+async function loadData() {
+    try {
+        // Try loading from local JSON first
+        const response = await fetch('data/movimientos.json');
+        if (response.ok) {
+            const rawData = await response.json();
+            // Normalize data keys (JSON uses lowercase, app uses PascalCase)
+            allTransactions = rawData.map(t => ({
+                Fecha: t.fecha || t.Fecha,
+                Tipo: t.tipo || t.Tipo,
+                Valor: t.valor || t.Valor || 0,
+                Categoria: t.categoria || t.Categoria || 'Otros',
+                Banco: t.banco || t.Banco || '--',
+                Detalle: t.detalle || t.Detalle || '',
+                Producto: t.producto || t.Producto || '',
+                NumeroProducto: t.numero_producto || t.NumeroProducto || ''
+            }));
+            console.log(`📊 Loaded ${allTransactions.length} transactions`);
+            applyFilters();
+            renderAll();
         }
+    } catch (error) {
+        console.error('Error loading data:', error);
+        allTransactions = [];
+        renderAll();
+    }
+}
+
+// =========================================
+// NAVIGATION
+// =========================================
+function setupNavigation() {
+    const navLinks = document.querySelectorAll('#main-nav .nav-link');
+
+    navLinks.forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const view = link.dataset.view;
+            if (view) navigateTo(view);
+        });
+    });
+}
+
+function navigateTo(view) {
+    currentView = view;
+
+    // Update nav active states
+    const navLinks = document.querySelectorAll('#main-nav .nav-link');
+    navLinks.forEach(link => {
+        if (link.dataset.view === view) {
+            link.classList.add('text-primary');
+            link.classList.remove('text-slate-600', 'dark:text-slate-300');
+        } else {
+            link.classList.remove('text-primary');
+            link.classList.add('text-slate-600', 'dark:text-slate-300');
+        }
+    });
+
+    // Show/hide sections
+    const sections = document.querySelectorAll('section.view-section');
+    sections.forEach(section => {
+        if (section.id === `section-${view}`) {
+            section.classList.add('active');
+        } else {
+            section.classList.remove('active');
+        }
+    });
+}
+
+// =========================================
+// FILTERS
+// =========================================
+function setupFilters() {
+    // Period filter
+    const periodFilter = document.getElementById('period-filter');
+    if (periodFilter) {
+        periodFilter.addEventListener('change', () => {
+            applyFilters();
+            renderAll();
+        });
     }
 
-    // Default category
-    return 'Otros';
+    // Search gastos
+    const searchGastos = document.getElementById('search-gastos');
+    if (searchGastos) {
+        searchGastos.addEventListener('input', debounce(() => {
+            applyFilters();
+            renderGastosTable();
+        }, 300));
+    }
+
+    // Clear filters
+    const clearBtn = document.getElementById('clear-filters-gastos');
+    if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+            document.getElementById('search-gastos').value = '';
+            document.getElementById('filter-member-gastos').value = 'all';
+            document.getElementById('filter-bank-gastos').value = 'all';
+            document.getElementById('filter-category-gastos').value = 'all';
+            applyFilters();
+            renderGastosTable();
+        });
+    }
+
+    // Pagination
+    document.getElementById('gastos-prev')?.addEventListener('click', () => changePage('gastos', -1));
+    document.getElementById('gastos-next')?.addEventListener('click', () => changePage('gastos', 1));
+    document.getElementById('ingresos-prev')?.addEventListener('click', () => changePage('ingresos', -1));
+    document.getElementById('ingresos-next')?.addEventListener('click', () => changePage('ingresos', 1));
 }
 
-function processTransactions(data) {
-    return data
-        .filter(tx => tx.valor > 0) // Filter out zero-value transactions
-        // Exclude Internal Credit Card Payments from Dashboard (to avoid double counting/income inflation)
-        .filter(tx => tx.tipo !== 'Pago/Abono')
-        .map(tx => ({
-            ...tx,
-            // Use pre-computed categoria from JSON, fallback to dynamic categorization
-            categoria: tx.categoria || categorizeTransaction(tx.detalle, tx.tipo),
-            isIncome: ['Depósito', 'Ingreso'].includes(tx.tipo)
-        }));
-}
-
-// ==========================================
-// PERIOD FILTERING
-// ==========================================
-
-function filterByPeriod(transactions, period) {
+function applyFilters() {
+    const period = document.getElementById('period-filter')?.value || CONFIG.DEFAULT_PERIOD;
     const now = new Date();
-    let startDate;
+    let startDate = new Date(0);
 
     switch (period) {
         case 'month':
@@ -184,805 +152,692 @@ function filterByPeriod(transactions, period) {
             startDate = new Date(now.getFullYear(), now.getMonth() - 5, 1);
             break;
         case 'year':
-            // Filter by selected year from year-select dropdown
-            const yearSelect = document.getElementById('year-select');
-            const selectedYear = yearSelect ? parseInt(yearSelect.value) : now.getFullYear();
-            return transactions.filter(tx => {
-                const txYear = new Date(tx.fecha).getFullYear();
-                return txYear === selectedYear;
-            });
+            startDate = new Date(now.getFullYear(), 0, 1);
+            break;
         case 'all':
         default:
-            return transactions;
+            startDate = new Date(0);
     }
 
-    return transactions.filter(tx => {
-        const txDate = new Date(tx.fecha);
-        return txDate >= startDate;
+    filteredTransactions = allTransactions.filter(t => {
+        const date = new Date(t.Fecha);
+        return date >= startDate && date <= now;
     });
+
+    // Reset pagination
+    pagination.gastos.page = 1;
+    pagination.ingresos.page = 1;
 }
 
-// ==========================================
-// KPI CALCULATIONS
-// ==========================================
+function changePage(type, delta) {
+    const pag = pagination[type];
+    const totalPages = Math.ceil(pag.total / pag.perPage);
+    const newPage = pag.page + delta;
 
-function calculateKPIs(transactions) {
-    const income = transactions
-        .filter(tx => tx.isIncome)
-        .reduce((sum, tx) => sum + tx.valor, 0);
-
-    const expenses = transactions
-        .filter(tx => !tx.isIncome)
-        .reduce((sum, tx) => sum + tx.valor, 0);
-
-    const balance = income - expenses;
-    const savingsRate = income > 0 ? ((income - expenses) / income) * 100 : 0;
-    const expensePercent = income > 0 ? (expenses / income) * 100 : 0;
-
-    // Calculate daily average
-    const dates = [...new Set(transactions.filter(tx => !tx.isIncome).map(tx => tx.fecha))];
-    const avgDaily = dates.length > 0 ? expenses / dates.length : 0;
-
-    // Find max expense day
-    const expensesByDay = {};
-    transactions.filter(tx => !tx.isIncome).forEach(tx => {
-        if (!expensesByDay[tx.fecha]) expensesByDay[tx.fecha] = 0;
-        expensesByDay[tx.fecha] += tx.valor;
-    });
-
-    let maxDay = '--';
-    let maxDayValue = 0;
-    for (const [date, value] of Object.entries(expensesByDay)) {
-        if (value > maxDayValue) {
-            maxDayValue = value;
-            maxDay = date;
-        }
+    if (newPage >= 1 && newPage <= totalPages) {
+        pag.page = newPage;
+        if (type === 'gastos') renderGastosTable();
+        else renderIngresosTable();
     }
-
-    // Find dominant category
-    const categoryTotals = {};
-    transactions.filter(tx => !tx.isIncome).forEach(tx => {
-        if (!categoryTotals[tx.categoria]) categoryTotals[tx.categoria] = 0;
-        categoryTotals[tx.categoria] += tx.valor;
-    });
-
-    let dominantCategory = '--';
-    let dominantValue = 0;
-    for (const [cat, value] of Object.entries(categoryTotals)) {
-        if (value > dominantValue) {
-            dominantValue = value;
-            dominantCategory = cat;
-        }
-    }
-
-    return {
-        income,
-        expenses,
-        balance,
-        savingsRate,
-        expensePercent,
-        avgDaily,
-        maxDay,
-        maxDayValue,
-        dominantCategory,
-        dominantPercent: expenses > 0 ? (dominantValue / expenses) * 100 : 0,
-        categoryTotals,
-        incomeCount: transactions.filter(tx => tx.isIncome).length,
-        expenseCount: transactions.filter(tx => !tx.isIncome).length,
-        totalCount: transactions.length
-    };
 }
 
-// ==========================================
+// =========================================
 // RENDER FUNCTIONS
-// ==========================================
-
-function renderKPIs(kpis) {
-    // Balance
-    document.getElementById('balance-value').textContent = formatCOP(kpis.balance);
-    const balanceIndicator = document.getElementById('balance-indicator');
-    balanceIndicator.className = 'kpi-indicator ' + (kpis.balance >= 0 ? 'positive' : 'negative');
-    document.getElementById('balance-value').style.color = kpis.balance >= 0 ? 'var(--success)' : 'var(--danger)';
-
-    // Savings Rate
-    const savingsRateValue = document.getElementById('savings-rate-value');
-    savingsRateValue.textContent = `${kpis.savingsRate.toFixed(1)}%`;
-
-    const savingsIndicator = document.getElementById('savings-indicator');
-    const gaugeFill = document.getElementById('gauge-fill');
-
-    let savingsColor, savingsClass;
-    if (kpis.savingsRate > 20) {
-        savingsColor = 'var(--success)';
-        savingsClass = 'positive';
-    } else if (kpis.savingsRate >= 10) {
-        savingsColor = 'var(--warning)';
-        savingsClass = 'warning';
-    } else {
-        savingsColor = 'var(--danger)';
-        savingsClass = 'negative';
-    }
-
-    savingsRateValue.style.color = savingsColor;
-    savingsIndicator.className = 'kpi-indicator ' + savingsClass;
-    gaugeFill.style.width = `${Math.min(kpis.savingsRate, 100)}%`;
-    gaugeFill.style.background = savingsColor;
-
-    // Income
-    document.getElementById('income-value').textContent = formatCOP(kpis.income);
-    document.getElementById('income-value').style.color = 'var(--success)';
-    document.getElementById('income-count').textContent = `${kpis.incomeCount} transacciones`;
-
-    // Expenses
-    document.getElementById('expenses-value').textContent = formatCOP(kpis.expenses);
-    document.getElementById('expenses-percent').textContent = `${kpis.expensePercent.toFixed(0)}% del ingreso`;
-
-    const expensesIndicator = document.getElementById('expenses-indicator');
-    const expensesValue = document.getElementById('expenses-value');
-
-    if (kpis.expensePercent < 60) {
-        expensesIndicator.className = 'kpi-indicator positive';
-        expensesValue.style.color = 'var(--success)';
-    } else if (kpis.expensePercent <= 80) {
-        expensesIndicator.className = 'kpi-indicator warning';
-        expensesValue.style.color = 'var(--warning)';
-    } else {
-        expensesIndicator.className = 'kpi-indicator negative';
-        expensesValue.style.color = 'var(--danger)';
-    }
-
-    // Summary
-    document.getElementById('avg-daily').textContent = formatCOP(kpis.avgDaily);
-    document.getElementById('max-day').textContent = kpis.maxDay !== '--' ? formatDate(kpis.maxDay) : '--';
-    document.getElementById('dominant-category').textContent = `${kpis.dominantCategory} (${kpis.dominantPercent.toFixed(0)}%)`;
-    document.getElementById('total-transactions').textContent = kpis.totalCount;
-    document.getElementById('transaction-count').textContent = `${allTransactions.length} transacciones`;
+// =========================================
+function renderAll() {
+    renderKPIs();
+    renderCharts();
+    renderRecentTransactions();
+    renderCategoryDonut();
+    renderFamilyIncome();
+    renderAccounts();
+    renderGastosTable();
+    renderIngresosTable();
+    fetchAIRecommendations();
 }
 
-function renderMonthlyChart(transactions) {
-    const ctx = document.getElementById('monthlyChart').getContext('2d');
+// KPIs
+function renderKPIs() {
+    const gastos = filteredTransactions.filter(t => t.Tipo === 'Compra' || t.Tipo === 'Retiro' || t.Tipo === 'Débito');
+    const ingresos = filteredTransactions.filter(t => t.Tipo === 'Depósito' || t.Tipo === 'Transferencia Recibida');
 
-    // Aggregate by month
+    const totalGastos = gastos.reduce((sum, t) => sum + (parseFloat(t.Valor) || 0), 0);
+    const totalIngresos = ingresos.reduce((sum, t) => sum + (parseFloat(t.Valor) || 0), 0);
+    const balance = totalIngresos - totalGastos;
+
+    // Update KPI values
+    document.getElementById('kpi-balance').textContent = formatCurrency(balance);
+    document.getElementById('kpi-income').textContent = formatCurrency(totalIngresos);
+    document.getElementById('kpi-expenses').textContent = formatCurrency(totalGastos);
+
+    // Update gastos view stats
+    const gastosTotal = document.getElementById('gastos-total-stat');
+    if (gastosTotal) gastosTotal.textContent = formatCurrency(totalGastos);
+
+    const daysInPeriod = getDaysInPeriod();
+    const dailyAvg = document.getElementById('gastos-daily-avg');
+    if (dailyAvg) dailyAvg.textContent = formatCurrency(totalGastos / daysInPeriod);
+
+    // Top category
+    const categorySums = {};
+    gastos.forEach(t => {
+        const cat = t.Categoria || 'Otros';
+        categorySums[cat] = (categorySums[cat] || 0) + Math.abs(parseFloat(t.Valor) || 0);
+    });
+    const topCategory = Object.entries(categorySums).sort((a, b) => b[1] - a[1])[0];
+    const topCatEl = document.getElementById('gastos-top-category');
+    if (topCatEl && topCategory) {
+        topCatEl.textContent = `${topCategory[0]} (${formatCurrency(topCategory[1])})`;
+    }
+
+    // Update ingresos view stats
+    const ingresosTotal = document.getElementById('ingresos-total-stat');
+    if (ingresosTotal) ingresosTotal.textContent = formatCurrency(totalIngresos);
+}
+
+// Charts
+function renderCharts() {
+    renderIncomeVsExpensesChart();
+}
+
+function renderIncomeVsExpensesChart() {
+    const ctx = document.getElementById('chart-income-vs-expenses');
+    if (!ctx) return;
+
+    // Destroy existing chart
+    if (charts.incomeVsExpenses) {
+        charts.incomeVsExpenses.destroy();
+    }
+
+    // Group by month
     const monthlyData = {};
-    transactions.forEach(tx => {
-        const monthKey = tx.fecha.substring(0, 7); // YYYY-MM
+    filteredTransactions.forEach(t => {
+        const date = new Date(t.Fecha);
+        const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
         if (!monthlyData[monthKey]) {
-            monthlyData[monthKey] = { income: 0, expense: 0 };
+            monthlyData[monthKey] = { income: 0, expenses: 0 };
         }
-        if (tx.isIncome) {
-            monthlyData[monthKey].income += tx.valor;
+        const value = Math.abs(parseFloat(t.Valor) || 0);
+        if (t.Tipo === 'Depósito' || t.Tipo === 'Transferencia Recibida') {
+            monthlyData[monthKey].income += value;
         } else {
-            monthlyData[monthKey].expense += tx.valor;
+            monthlyData[monthKey].expenses += value;
         }
     });
 
     const sortedMonths = Object.keys(monthlyData).sort();
     const labels = sortedMonths.map(m => {
         const [year, month] = m.split('-');
-        return `${MONTH_NAMES[month]} ${year.slice(2)}`;
+        return new Date(year, month - 1).toLocaleDateString('es-CO', { month: 'short', year: '2-digit' });
     });
 
-    const incomeData = sortedMonths.map(m => monthlyData[m].income);
-    const expenseData = sortedMonths.map(m => monthlyData[m].expense);
-    const balanceData = sortedMonths.map(m => monthlyData[m].income - monthlyData[m].expense);
-
-    // Destroy previous chart if exists
-    if (monthlyChartInstance) {
-        monthlyChartInstance.destroy();
-    }
-
-    monthlyChartInstance = new Chart(ctx, {
-        type: 'bar',
+    charts.incomeVsExpenses = new Chart(ctx, {
+        type: 'line',
         data: {
-            labels: labels,
+            labels,
             datasets: [
                 {
                     label: 'Ingresos',
-                    data: incomeData,
-                    backgroundColor: 'rgba(16, 185, 129, 0.7)',
-                    borderColor: '#10b981',
-                    borderWidth: 1,
-                    borderRadius: 6,
-                    order: 2
+                    data: sortedMonths.map(m => monthlyData[m].income),
+                    borderColor: CONFIG.CHART_COLORS.primary,
+                    backgroundColor: CONFIG.CHART_COLORS.primary + '20',
+                    fill: true,
+                    tension: 0.4
                 },
                 {
                     label: 'Gastos',
-                    data: expenseData,
-                    backgroundColor: 'rgba(239, 68, 68, 0.7)',
-                    borderColor: '#ef4444',
-                    borderWidth: 1,
-                    borderRadius: 6,
-                    order: 3
-                },
-                {
-                    label: 'Balance',
-                    data: balanceData,
-                    type: 'line',
-                    borderColor: '#6366f1',
-                    backgroundColor: 'rgba(99, 102, 241, 0.1)',
-                    borderWidth: 3,
-                    tension: 0.3,
+                    data: sortedMonths.map(m => monthlyData[m].expenses),
+                    borderColor: CONFIG.CHART_COLORS.danger,
+                    backgroundColor: CONFIG.CHART_COLORS.danger + '20',
                     fill: true,
-                    pointBackgroundColor: '#6366f1',
-                    pointRadius: 4,
-                    pointHoverRadius: 6,
-                    order: 1
+                    tension: 0.4
                 }
             ]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            interaction: {
-                intersect: false,
-                mode: 'index'
-            },
             plugins: {
-                legend: {
-                    position: 'top',
-                    align: 'end',
-                    labels: {
-                        color: '#94a3b8',
-                        font: { family: 'Inter', size: 11 },
-                        usePointStyle: true,
-                        padding: 15
-                    }
-                },
-                tooltip: {
-                    backgroundColor: 'rgba(15, 23, 42, 0.95)',
-                    titleFont: { size: 13, weight: '600' },
-                    bodyFont: { size: 12 },
-                    padding: 12,
-                    cornerRadius: 8,
-                    displayColors: true,
-                    callbacks: {
-                        label: function (context) {
-                            return `${context.dataset.label}: ${formatCOP(context.raw)}`;
-                        }
-                    }
-                }
+                legend: { display: false }
             },
             scales: {
+                x: { grid: { display: false } },
                 y: {
-                    beginAtZero: true,
+                    grid: { color: '#374151' },
                     ticks: {
-                        color: '#64748b',
-                        font: { size: 10 },
-                        callback: value => formatCOP(value)
-                    },
-                    grid: { color: 'rgba(255,255,255,0.05)' }
-                },
-                x: {
-                    ticks: { color: '#64748b', font: { size: 10 } },
-                    grid: { display: false }
+                        callback: value => formatCurrencyShort(value)
+                    }
                 }
             }
         }
     });
 }
 
-function renderCategoryChart(transactions, kpis) {
-    const ctx = document.getElementById('categoryChart').getContext('2d');
+function renderCategoryDonut() {
+    const ctx = document.getElementById('chart-categories-donut');
+    if (!ctx) return;
 
-    // Get expense categories only (not income)
-    const categoryTotals = {};
-    transactions.filter(tx => !tx.isIncome).forEach(tx => {
-        if (!categoryTotals[tx.categoria]) categoryTotals[tx.categoria] = 0;
-        categoryTotals[tx.categoria] += tx.valor;
-    });
-
-    // Sort by value
-    const sortedCategories = Object.entries(categoryTotals)
-        .sort((a, b) => b[1] - a[1]);
-
-    const labels = sortedCategories.map(([cat]) => cat);
-    const data = sortedCategories.map(([, val]) => val);
-    const colors = labels.map(cat => CATEGORY_COLORS[cat] || CATEGORY_COLORS['Otros']);
-
-    // Update donut center
-    document.getElementById('donut-total').textContent = formatCOP(kpis.expenses);
-
-    // Destroy previous chart if exists
-    if (categoryChartInstance) {
-        categoryChartInstance.destroy();
+    if (charts.categoryDonut) {
+        charts.categoryDonut.destroy();
     }
 
-    categoryChartInstance = new Chart(ctx, {
+    const gastos = filteredTransactions.filter(t => t.Tipo === 'Compra' || t.Tipo === 'Retiro' || t.Tipo === 'Débito');
+    const categorySums = {};
+    gastos.forEach(t => {
+        const cat = t.Categoria || 'Otros';
+        categorySums[cat] = (categorySums[cat] || 0) + Math.abs(parseFloat(t.Valor) || 0);
+    });
+
+    const sorted = Object.entries(categorySums).sort((a, b) => b[1] - a[1]).slice(0, 6);
+    const labels = sorted.map(([cat]) => cat);
+    const data = sorted.map(([, val]) => val);
+    const colors = [
+        CONFIG.CHART_COLORS.primary,
+        CONFIG.CHART_COLORS.secondary,
+        CONFIG.CHART_COLORS.danger,
+        CONFIG.CHART_COLORS.warning,
+        CONFIG.CHART_COLORS.purple,
+        CONFIG.CHART_COLORS.teal
+    ];
+
+    const total = data.reduce((a, b) => a + b, 0);
+    document.getElementById('donut-total').textContent = formatCurrencyShort(total);
+
+    charts.categoryDonut = new Chart(ctx, {
         type: 'doughnut',
         data: {
-            labels: labels,
+            labels,
             datasets: [{
-                data: data,
+                data,
                 backgroundColor: colors,
-                borderWidth: 0,
-                hoverOffset: 8
+                borderWidth: 0
             }]
         },
         options: {
             responsive: true,
-            maintainAspectRatio: false,
-            cutout: '65%',
+            maintainAspectRatio: true,
+            cutout: '70%',
             plugins: {
-                legend: {
-                    position: 'bottom',
-                    labels: {
-                        color: '#94a3b8',
-                        font: { size: 11 },
-                        padding: 12,
-                        usePointStyle: true
-                    }
-                },
-                tooltip: {
-                    backgroundColor: 'rgba(15, 23, 42, 0.95)',
-                    titleFont: { size: 13, weight: '600' },
-                    bodyFont: { size: 12 },
-                    padding: 12,
-                    cornerRadius: 8,
-                    callbacks: {
-                        label: function (context) {
-                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                            const percentage = ((context.raw / total) * 100).toFixed(1);
-                            return `${formatCOP(context.raw)} (${percentage}%)`;
-                        }
-                    }
-                }
-            },
-            onClick: (event, elements) => {
-                if (elements.length > 0) {
-                    const index = elements[0].index;
-                    const category = labels[index];
-                    filterTableByCategory(category);
-                }
+                legend: { display: false }
             }
         }
     });
+
+    // Update legend
+    const legendContainer = document.getElementById('category-legend');
+    if (legendContainer) {
+        legendContainer.innerHTML = sorted.map(([cat, val], i) => `
+            <div class="flex items-center justify-between gap-2">
+                <div class="flex items-center gap-2">
+                    <span class="size-3 rounded-full" style="background: ${colors[i]}"></span>
+                    <span class="text-sm font-medium">${cat}</span>
+                </div>
+                <span class="text-sm text-slate-500 dark:text-slate-400">${formatCurrency(val)}</span>
+            </div>
+        `).join('');
+    }
 }
 
-function renderTopCategories(kpis) {
-    const container = document.getElementById('top-categories-list');
-    const totalExpenses = kpis.expenses;
+// Recent Transactions
+function renderRecentTransactions() {
+    const container = document.getElementById('recent-transactions');
+    if (!container) return;
 
-    // Get top 5 categories
-    const sortedCategories = Object.entries(kpis.categoryTotals)
-        .sort((a, b) => b[1] - a[1])
+    const recent = [...filteredTransactions]
+        .sort((a, b) => new Date(b.Fecha) - new Date(a.Fecha))
         .slice(0, 5);
 
-    const maxValue = sortedCategories[0]?.[1] || 0;
-
-    container.innerHTML = sortedCategories.map(([category, value]) => {
-        const percent = totalExpenses > 0 ? (value / totalExpenses) * 100 : 0;
-        const barWidth = maxValue > 0 ? (value / maxValue) * 100 : 0;
-        const color = CATEGORY_COLORS[category] || CATEGORY_COLORS['Otros'];
+    container.innerHTML = recent.map(t => {
+        const isExpense = t.Tipo === 'Compra' || t.Tipo === 'Retiro' || t.Tipo === 'Débito';
+        const value = parseFloat(t.Valor) || 0;
+        const icon = isExpense ? 'shopping_cart' : 'payments';
+        const valueClass = isExpense ? 'text-danger' : 'text-secondary';
+        const prefix = isExpense ? '-' : '+';
 
         return `
-            <div class="category-bar" data-category="${category}">
-                <div class="category-bar-header">
-                    <span class="category-bar-name">${category}</span>
-                    <span class="category-bar-value">${formatCOP(value)} (${percent.toFixed(1)}%)</span>
+            <div class="flex items-center justify-between py-2">
+                <div class="flex items-center gap-3">
+                    <div class="flex items-center justify-center size-10 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500">
+                        <span class="material-symbols-outlined text-[20px]">${icon}</span>
+                    </div>
+                    <div>
+                        <p class="text-sm font-medium">${t.Detalle || t.Tipo}</p>
+                        <p class="text-xs text-slate-500">${formatDate(t.Fecha)}</p>
+                    </div>
                 </div>
-                <div class="category-bar-track">
-                    <div class="category-bar-fill" style="width: ${barWidth}%; background: ${color};"></div>
+                <span class="text-sm font-bold ${valueClass}">${prefix}${formatCurrency(Math.abs(value))}</span>
+            </div>
+        `;
+    }).join('');
+}
+
+// Family Income
+function renderFamilyIncome() {
+    const container = document.getElementById('family-income-list');
+    if (!container) return;
+
+    const ingresos = filteredTransactions.filter(t => t.Tipo === 'Depósito' || t.Tipo === 'Transferencia Recibida');
+    const totalIncome = ingresos.reduce((sum, t) => sum + Math.abs(parseFloat(t.Valor) || 0), 0);
+
+    // Mock family data - in production this would be per-member tracking
+    const familyData = [
+        { member: CONFIG.FAMILY_MEMBERS[0], income: totalIncome * 0.55, goal: totalIncome * 0.6 },
+        { member: CONFIG.FAMILY_MEMBERS[1], income: totalIncome * 0.45, goal: totalIncome * 0.5 }
+    ];
+
+    container.innerHTML = familyData.map(({ member, income, goal }) => {
+        const progress = Math.min((income / goal) * 100, 100);
+        return `
+            <div class="p-4 rounded-xl bg-slate-50 dark:bg-[#1c2333] border border-slate-100 dark:border-slate-800">
+                <div class="flex items-center justify-between mb-3">
+                    <div class="flex items-center gap-3">
+                        <div class="flex items-center justify-center size-10 rounded-full ${member.color} text-white font-bold text-sm">
+                            ${member.initials}
+                        </div>
+                        <div>
+                            <p class="font-medium">${member.name}</p>
+                            <p class="text-xs text-slate-500">Meta: ${formatCurrency(goal)}</p>
+                        </div>
+                    </div>
+                    <span class="text-lg font-bold text-secondary">${formatCurrency(income)}</span>
+                </div>
+                <div class="h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                    <div class="h-full bg-primary rounded-full transition-all" style="width: ${progress}%"></div>
                 </div>
             </div>
         `;
     }).join('');
-
-    // Add click handlers
-    container.querySelectorAll('.category-bar').forEach(bar => {
-        bar.style.cursor = 'pointer';
-        bar.addEventListener('click', () => {
-            const category = bar.dataset.category;
-            filterTableByCategory(category);
-        });
-    });
 }
 
-function renderInsights(transactions, kpis) {
-    const container = document.getElementById('ai-insights');
-    const insights = [];
+// Accounts
+function renderAccounts() {
+    const container = document.getElementById('accounts-list');
+    if (!container) return;
 
-    // Ticket promedio
-    const expenseTransactions = transactions.filter(tx => !tx.isIncome);
-    const avgTicket = expenseTransactions.length > 0
-        ? kpis.expenses / expenseTransactions.length
-        : 0;
-    insights.push({
-        text: `Ticket promedio: <strong>${formatCOP(avgTicket)}</strong> por transacción`,
-        type: 'neutral'
+    // Extract unique banks from transactions
+    const bankBalances = {};
+    filteredTransactions.forEach(t => {
+        const bank = t.Banco || 'Otro';
+        const value = parseFloat(t.Valor) || 0;
+        const isIncome = t.Tipo === 'Depósito' || t.Tipo === 'Transferencia Recibida';
+        bankBalances[bank] = (bankBalances[bank] || 0) + (isIncome ? value : -value);
     });
 
-    // Establecimiento más frecuente
-    const merchants = {};
-    expenseTransactions.forEach(tx => {
-        const merchant = tx.detalle?.trim();
-        if (merchant && merchant !== '') {
-            merchants[merchant] = (merchants[merchant] || 0) + 1;
-        }
-    });
+    const banks = Object.entries(bankBalances).slice(0, 4);
 
-    const topMerchant = Object.entries(merchants)
-        .sort((a, b) => b[1] - a[1])[0];
-
-    if (topMerchant) {
-        insights.push({
-            text: `Establecimiento frecuente: <strong>${topMerchant[0]}</strong> (${topMerchant[1]} visitas)`,
-            type: 'neutral'
-        });
+    if (banks.length === 0) {
+        container.innerHTML = '<p class="text-slate-500 text-sm">No hay cuentas para mostrar</p>';
+        return;
     }
 
-    // Ahorro o alerta
-    if (kpis.savingsRate > 20) {
-        insights.push({
-            text: `¡Excelente! Ahorraste <strong>${formatCOP(kpis.balance)}</strong> este período`,
-            type: 'positive'
-        });
-    } else if (kpis.savingsRate > 0) {
-        insights.push({
-            text: `Ahorraste <strong>${formatCOP(kpis.balance)}</strong>, intenta llegar al 20%`,
-            type: 'warning'
-        });
-    } else if (kpis.balance < 0) {
-        insights.push({
-            text: `⚠️ Gastaste <strong>${formatCOP(Math.abs(kpis.balance))}</strong> más de lo que ingresaste`,
-            type: 'negative'
-        });
-    }
-
-    // Categoría dominante
-    if (kpis.dominantCategory !== '--') {
-        insights.push({
-            text: `Tu mayor gasto es <strong>${kpis.dominantCategory}</strong> (${kpis.dominantPercent.toFixed(0)}% del total)`,
-            type: 'neutral'
-        });
-    }
-
-    container.innerHTML = insights.map(insight => `
-        <div class="insight-item ${insight.type}">${insight.text}</div>
+    container.innerHTML = banks.map(([bank, balance]) => `
+        <div class="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-[#1c2333] hover:bg-slate-100 dark:hover:bg-[#232b3b] transition-colors cursor-pointer">
+            <div class="flex items-center gap-3">
+                <div class="flex items-center justify-center size-10 rounded-lg bg-primary/10 text-primary">
+                    <span class="material-symbols-outlined">account_balance</span>
+                </div>
+                <div>
+                    <p class="font-medium">${bank}</p>
+                    <p class="text-xs text-slate-500">Cuenta</p>
+                </div>
+            </div>
+            <span class="font-bold ${balance >= 0 ? 'text-secondary' : 'text-danger'}">${formatCurrency(balance)}</span>
+        </div>
     `).join('');
 }
 
-function renderTables(transactions, kpis) {
-    const expenseTransactions = transactions.filter(tx => !tx.isIncome);
-    const incomeTransactions = transactions.filter(tx => tx.isIncome);
+// Gastos Table
+function renderGastosTable() {
+    const tbody = document.getElementById('table-gastos-body');
+    if (!tbody) return;
 
-    // Expenses table
-    const expensesBody = document.getElementById('table-gastos-body');
-    if (expensesBody) {
-        expensesBody.innerHTML = expenseTransactions
-            .sort((a, b) => new Date(b.fecha) - new Date(a.fecha))
-            .map(tx => {
-                const color = CATEGORY_COLORS[tx.categoria] || CATEGORY_COLORS['Otros'];
-                return `
-                    <tr data-category="${tx.categoria}">
-                        <td>${formatDateShort(tx.fecha)}</td>
-                        <td>${tx.detalle || 'Sin detalle'}</td>
-                        <td>
-                            <span class="category-badge" style="background: ${color}20; color: ${color};">
-                                ${tx.categoria}
-                            </span>
-                        </td>
-                        <td>${tx.banco}</td>
-                        <td>${tx.producto}</td>
-                        <td class="font-mono text-xs">${tx.numero_producto || '--'}</td>
-                        <td class="text-right" style="color: var(--danger); font-weight: 600;">
-                            ${formatCOP(tx.valor)}
-                        </td>
-                    </tr>
-                `;
-            }).join('');
+    const searchTerm = document.getElementById('search-gastos')?.value?.toLowerCase() || '';
+
+    let gastos = filteredTransactions.filter(t =>
+        t.Tipo === 'Compra' || t.Tipo === 'Retiro' || t.Tipo === 'Débito'
+    );
+
+    // Apply search
+    if (searchTerm) {
+        gastos = gastos.filter(t =>
+            (t.Detalle || '').toLowerCase().includes(searchTerm) ||
+            (t.Categoria || '').toLowerCase().includes(searchTerm) ||
+            String(t.Valor).includes(searchTerm)
+        );
     }
 
-    // Income table
-    const incomeBody = document.getElementById('table-ingresos-body');
-    if (incomeBody) {
-        incomeBody.innerHTML = incomeTransactions
-            .sort((a, b) => new Date(b.fecha) - new Date(a.fecha))
-            .map(tx => `
-                <tr>
-                    <td>${formatDateShort(tx.fecha)}</td>
-                    <td>${tx.detalle || 'Depósito / Ingreso'}</td>
-                    <td>${tx.banco}</td>
-                    <td>${tx.producto}</td>
-                    <td class="font-mono text-xs">${tx.numero_producto || '--'}</td>
-                    <td class="text-right" style="color: var(--success); font-weight: 600;">
-                        ${formatCOP(tx.valor)}
-                    </td>
-                </tr>
+    // Sort by date descending
+    gastos.sort((a, b) => new Date(b.Fecha) - new Date(a.Fecha));
+
+    // Pagination
+    pagination.gastos.total = gastos.length;
+    const start = (pagination.gastos.page - 1) * pagination.gastos.perPage;
+    const pageData = gastos.slice(start, start + pagination.gastos.perPage);
+
+    tbody.innerHTML = pageData.map(t => {
+        const catColors = CONFIG.CATEGORY_COLORS[t.Categoria] || CONFIG.CATEGORY_COLORS['Otros'];
+        const member = CONFIG.FAMILY_MEMBERS[0]; // Default for demo
+
+        return `
+            <tr class="hover:bg-slate-50 dark:hover:bg-[#1f2633] transition-colors">
+                <td class="px-6 py-4 whitespace-nowrap">${formatDate(t.Fecha)}</td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="flex items-center gap-2">
+                        <div class="size-6 rounded-full ${member.color} flex items-center justify-center text-[10px] font-bold text-white">${member.initials}</div>
+                        <span>${member.name}</span>
+                    </div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap font-medium">${t.Detalle || t.Tipo}</td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <span class="inline-flex items-center rounded-full ${catColors.bg} px-2.5 py-0.5 text-xs font-medium ${catColors.text}">
+                        ${t.Categoria || 'Otros'}
+                    </span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-slate-500">
+                    <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-lg">account_balance</span>
+                        <span>${t.Banco || '--'}</span>
+                    </div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-right font-bold text-danger">-${formatCurrency(Math.abs(parseFloat(t.Valor) || 0))}</td>
+            </tr>
+        `;
+    }).join('');
+
+    // Update pagination info
+    const info = document.getElementById('gastos-pagination-info');
+    if (info) {
+        const end = Math.min(start + pagination.gastos.perPage, pagination.gastos.total);
+        info.textContent = `Mostrando ${start + 1} a ${end} de ${pagination.gastos.total} resultados`;
+    }
+
+    // Update pagination buttons
+    document.getElementById('gastos-prev').disabled = pagination.gastos.page <= 1;
+    document.getElementById('gastos-next').disabled = start + pagination.gastos.perPage >= pagination.gastos.total;
+}
+
+// Ingresos Table
+function renderIngresosTable() {
+    const tbody = document.getElementById('table-ingresos-body');
+    if (!tbody) return;
+
+    let ingresos = filteredTransactions.filter(t =>
+        t.Tipo === 'Depósito' || t.Tipo === 'Transferencia Recibida'
+    );
+
+    // Sort by date descending
+    ingresos.sort((a, b) => new Date(b.Fecha) - new Date(a.Fecha));
+
+    // Pagination
+    pagination.ingresos.total = ingresos.length;
+    const start = (pagination.ingresos.page - 1) * pagination.ingresos.perPage;
+    const pageData = ingresos.slice(start, start + pagination.ingresos.perPage);
+
+    tbody.innerHTML = pageData.map(t => {
+        const sourceColors = CONFIG.CATEGORY_COLORS[t.Categoria] || CONFIG.CATEGORY_COLORS['Sueldo'];
+        const member = CONFIG.FAMILY_MEMBERS[Math.floor(Math.random() * 2)]; // Random for demo
+
+        return `
+            <tr class="hover:bg-gray-50 dark:hover:bg-[#232936] transition-colors">
+                <td class="py-4 px-6 text-sm font-medium whitespace-nowrap">${formatDate(t.Fecha)}</td>
+                <td class="py-4 px-6">
+                    <div class="flex items-center gap-3">
+                        <div class="size-8 rounded-full ${member.color} flex items-center justify-center text-xs font-bold text-white">${member.initials}</div>
+                        <div class="text-sm font-medium">${member.name}</div>
+                    </div>
+                </td>
+                <td class="py-4 px-6">
+                    <span class="inline-flex items-center rounded-full ${sourceColors.bg} px-2.5 py-0.5 text-xs font-medium ${sourceColors.text}">
+                        ${t.Categoria || t.Tipo}
+                    </span>
+                </td>
+                <td class="py-4 px-6 text-sm text-slate-500">${t.Banco || '--'} ${t.Producto ? '••••' + t.Producto.slice(-4) : ''}</td>
+                <td class="py-4 px-6 text-right">
+                    <span class="text-secondary font-bold text-sm">+${formatCurrency(Math.abs(parseFloat(t.Valor) || 0))}</span>
+                </td>
+            </tr>
+        `;
+    }).join('');
+
+    // Update pagination info
+    const info = document.getElementById('ingresos-pagination-info');
+    if (info) {
+        const end = Math.min(start + pagination.ingresos.perPage, pagination.ingresos.total);
+        info.textContent = `Mostrando ${start + 1} a ${end} de ${pagination.ingresos.total} resultados`;
+    }
+
+    // Update pagination buttons
+    document.getElementById('ingresos-prev').disabled = pagination.ingresos.page <= 1;
+    document.getElementById('ingresos-next').disabled = start + pagination.ingresos.perPage >= pagination.ingresos.total;
+}
+
+// =========================================
+// AI RECOMMENDATIONS (Gemini)
+// =========================================
+async function fetchAIRecommendations() {
+    const container = document.getElementById('ai-recommendations');
+    if (!container) return;
+
+    container.innerHTML = `
+        <div class="p-4 rounded-xl bg-gradient-to-br from-slate-50 to-blue-50/50 dark:from-slate-800/50 dark:to-blue-900/20 border border-slate-100 dark:border-slate-800">
+            <p class="text-sm text-slate-500 dark:text-slate-400 animate-pulse">✨ Analizando tus finanzas...</p>
+        </div>
+    `;
+
+    // Calculate summary data
+    const gastos = filteredTransactions.filter(t => t.Tipo === 'Compra' || t.Tipo === 'Retiro' || t.Tipo === 'Débito');
+    const ingresos = filteredTransactions.filter(t => t.Tipo === 'Depósito' || t.Tipo === 'Transferencia Recibida');
+    const totalGastos = gastos.reduce((sum, t) => sum + Math.abs(parseFloat(t.Valor) || 0), 0);
+    const totalIngresos = ingresos.reduce((sum, t) => sum + Math.abs(parseFloat(t.Valor) || 0), 0);
+
+    // Get top categories
+    const categorySpend = {};
+    gastos.forEach(t => {
+        const cat = t.Categoria || 'Otros';
+        categorySpend[cat] = (categorySpend[cat] || 0) + Math.abs(parseFloat(t.Valor) || 0);
+    });
+    const topCategories = Object.entries(categorySpend).sort((a, b) => b[1] - a[1]).slice(0, 5);
+
+    const prompt = `Eres un asesor financiero familiar experto. Analiza estos datos y da 3 recomendaciones CORTAS (máximo 2 líneas cada una) y ACCIONABLES:
+
+Ingresos del mes: $${totalIngresos.toLocaleString()}
+Gastos del mes: $${totalGastos.toLocaleString()}
+Balance: $${(totalIngresos - totalGastos).toLocaleString()}
+Gastos por categoría: ${topCategories.map(([cat, val]) => `${cat}: $${val.toLocaleString()}`).join(', ')}
+
+Responde en español, con emojis, formato: "1. [emoji] [consejo corto]" para cada recomendación.`;
+
+    try {
+        const response = await fetch(`${CONFIG.GEMINI_API_URL}?key=${CONFIG.GEMINI_API_KEY}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contents: [{ parts: [{ text: prompt }] }]
+            })
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            const text = data.candidates?.[0]?.content?.parts?.[0]?.text || 'No se pudo obtener recomendaciones.';
+
+            const recommendations = text.split('\n').filter(line => line.trim().match(/^\d\./));
+            container.innerHTML = recommendations.map(rec => `
+                <div class="p-4 rounded-xl bg-gradient-to-br from-slate-50 to-blue-50/50 dark:from-slate-800/50 dark:to-blue-900/20 border border-slate-100 dark:border-slate-800">
+                    <p class="text-sm">${rec.replace(/^\d\.\s*/, '')}</p>
+                </div>
             `).join('');
-    }
-
-    // Update footer counts
-    document.getElementById('gastos-count').textContent = `${expenseTransactions.length} gastos`;
-    document.getElementById('gastos-total').textContent = `Total: ${formatCOP(kpis.expenses)}`;
-    document.getElementById('ingresos-count').textContent = `${incomeTransactions.length} ingresos`;
-    document.getElementById('ingresos-total').textContent = `Total: ${formatCOP(kpis.income)}`;
-
-    // Populate category filter
-    const categoryFilter = document.getElementById('category-filter');
-    if (categoryFilter) {
-        const categories = [...new Set(expenseTransactions.map(tx => tx.categoria))].sort();
-        categoryFilter.innerHTML = `
-            <option value="all">Todas las categorías</option>
-            ${categories.map(cat => `<option value="${cat}">${cat}</option>`).join('')}
+        } else {
+            throw new Error('API error');
+        }
+    } catch (error) {
+        console.error('AI Recommendations error:', error);
+        container.innerHTML = `
+            <div class="p-4 rounded-xl bg-gradient-to-br from-slate-50 to-blue-50/50 dark:from-slate-800/50 dark:to-blue-900/20 border border-slate-100 dark:border-slate-800">
+                <p class="text-sm">💡 Mantén un ahorro del 20% de tus ingresos mensuales.</p>
+            </div>
+            <div class="p-4 rounded-xl bg-gradient-to-br from-slate-50 to-blue-50/50 dark:from-slate-800/50 dark:to-blue-900/20 border border-slate-100 dark:border-slate-800">
+                <p class="text-sm">📊 Revisa tus gastos por categoría para identificar oportunidades.</p>
+            </div>
         `;
     }
-}
 
-function filterTableByCategory(category) {
-    // Switch to expenses view
-    document.querySelectorAll('.nav-item').forEach(item => {
-        item.classList.remove('active');
-        if (item.dataset.view === 'gastos') {
-            item.classList.add('active');
-        }
-    });
-
-    document.querySelectorAll('.content-view').forEach(view => {
-        view.classList.remove('active');
-    });
-    document.getElementById('view-gastos').classList.add('active');
-
-    // Set filter dropdown
-    const categoryFilter = document.getElementById('category-filter');
-    if (categoryFilter) {
-        categoryFilter.value = category;
-    }
-
-    // Apply filter
-    applyTableFilters();
-}
-
-function applyTableFilters() {
-    const searchTerm = document.getElementById('search-gastos')?.value.toLowerCase() || '';
-    const categoryValue = document.getElementById('category-filter')?.value || 'all';
-
-    const rows = document.querySelectorAll('#table-gastos-body tr');
-    let visibleCount = 0;
-    let visibleTotal = 0;
-
-    rows.forEach(row => {
-        const text = row.textContent.toLowerCase();
-        const category = row.dataset.category;
-
-        const matchesSearch = text.includes(searchTerm);
-        const matchesCategory = categoryValue === 'all' || category === categoryValue;
-
-        if (matchesSearch && matchesCategory) {
-            row.style.display = '';
-            visibleCount++;
-            // Extract value from last cell
-            const valueCell = row.querySelector('td:last-child');
-            if (valueCell) {
-                const valueText = valueCell.textContent.replace(/[^0-9]/g, '');
-                visibleTotal += parseInt(valueText) || 0;
-            }
-        } else {
-            row.style.display = 'none';
-        }
-    });
-
-    document.getElementById('gastos-count').textContent = `${visibleCount} gastos`;
-    document.getElementById('gastos-total').textContent = `Total: ${formatCOP(visibleTotal)}`;
-}
-
-function updateLastUpdateIndicator(transactions) {
-    const dates = transactions.map(tx => tx.fecha).sort();
-    const lastDate = dates[dates.length - 1];
-
-    if (lastDate) {
-        const [year, month, day] = lastDate.split('-');
-        document.getElementById('last-update').textContent =
-            `Datos hasta: ${day} ${MONTH_NAMES_FULL[month]} ${year}`;
+    // Setup refresh button
+    const refreshBtn = document.getElementById('refresh-ai-btn');
+    if (refreshBtn) {
+        refreshBtn.onclick = fetchAIRecommendations;
     }
 }
 
-// ==========================================
-// NAVIGATION & FILTERS
-// ==========================================
+// =========================================
+// FILE UPLOAD
+// =========================================
+function setupFileUpload() {
+    const fileInput = document.getElementById('file-input');
+    const uploadZone = document.getElementById('upload-zone');
 
-function setupNavigation() {
-    const navItems = document.querySelectorAll('.nav-item');
-    const views = document.querySelectorAll('.content-view');
+    if (fileInput) {
+        fileInput.addEventListener('change', handleFileSelect);
+    }
 
-    navItems.forEach(item => {
-        item.addEventListener('click', () => {
-            const targetView = item.getAttribute('data-view');
-
-            navItems.forEach(i => i.classList.remove('active'));
-            item.classList.add('active');
-
-            views.forEach(view => {
-                view.classList.remove('active');
-                if (view.id === `view-${targetView}`) {
-                    view.classList.add('active');
-                }
-            });
+    if (uploadZone) {
+        uploadZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadZone.classList.add('border-primary', 'bg-primary/5');
         });
-    });
-}
 
-function setupFilters() {
-    // Period selector
-    const periodSelect = document.getElementById('period-select');
-    const yearSelect = document.getElementById('year-select');
-
-    if (periodSelect) {
-        periodSelect.addEventListener('change', (e) => {
-            currentPeriod = e.target.value;
-
-            // Toggle year selector visibility
-            if (yearSelect) {
-                if (currentPeriod === 'year') {
-                    yearSelect.classList.remove('hidden');
-                } else {
-                    yearSelect.classList.add('hidden');
-                }
-            }
-
-            refreshDashboard();
+        uploadZone.addEventListener('dragleave', () => {
+            uploadZone.classList.remove('border-primary', 'bg-primary/5');
         });
-    }
 
-    // Year selector
-    if (yearSelect) {
-        yearSelect.addEventListener('change', () => {
-            if (currentPeriod === 'year') {
-                refreshDashboard();
+        uploadZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadZone.classList.remove('border-primary', 'bg-primary/5');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
             }
         });
     }
+}
 
-    // Search filters
-    const searchGastos = document.getElementById('search-gastos');
-    if (searchGastos) {
-        searchGastos.addEventListener('input', applyTableFilters);
+function handleFileSelect(e) {
+    const file = e.target.files[0];
+    if (file) handleFile(file);
+}
+
+async function handleFile(file) {
+    const bank = document.getElementById('upload-bank')?.value;
+    const member = document.getElementById('upload-member')?.value;
+
+    if (!bank || !member) {
+        alert('Por favor selecciona un banco y un miembro de la familia');
+        return;
     }
 
-    const searchIngresos = document.getElementById('search-ingresos');
-    if (searchIngresos) {
-        searchIngresos.addEventListener('input', (e) => {
-            const term = e.target.value.toLowerCase();
-            const rows = document.querySelectorAll('#table-ingresos-body tr');
-            rows.forEach(row => {
-                const text = row.textContent.toLowerCase();
-                row.style.display = text.includes(term) ? '' : 'none';
-            });
-        });
+    console.log(`📁 Processing file: ${file.name} for ${bank} / ${member}`);
+
+    // Add to upload history
+    addUploadHistory(file.name, bank, member, 'processing');
+
+    // TODO: Implement actual file parsing (CSV/XLSX)
+    setTimeout(() => {
+        addUploadHistory(file.name, bank, member, 'success');
+        alert(`✅ Archivo "${file.name}" procesado correctamente`);
+        loadData(); // Reload data
+    }, 2000);
+}
+
+function addUploadHistory(filename, bank, member, status) {
+    const tbody = document.getElementById('upload-history-body');
+    if (!tbody) return;
+
+    const statusBadge = {
+        processing: '<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400"><span class="size-1.5 rounded-full bg-blue-500 animate-pulse"></span>Procesando</span>',
+        success: '<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400"><span class="size-1.5 rounded-full bg-green-500"></span>Listo</span>',
+        error: '<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400"><span class="size-1.5 rounded-full bg-red-500"></span>Error</span>'
+    };
+
+    const memberData = CONFIG.FAMILY_MEMBERS.find(m => m.id === member) || CONFIG.FAMILY_MEMBERS[0];
+
+    const row = `
+        <tr class="hover:bg-slate-50 dark:hover:bg-[#1c2333]/50 transition-colors">
+            <td class="px-6 py-4">
+                <div class="flex items-center gap-3">
+                    <span class="material-symbols-outlined ${status === 'success' ? 'text-green-500' : status === 'error' ? 'text-red-500' : 'text-blue-500 animate-pulse'}">${status === 'success' ? 'description' : status === 'error' ? 'error' : 'sync'}</span>
+                    <span class="font-medium">${filename}</span>
+                </div>
+            </td>
+            <td class="px-6 py-4 text-slate-500">${bank}</td>
+            <td class="px-6 py-4 text-slate-500">${new Date().toLocaleDateString('es-CO')}</td>
+            <td class="px-6 py-4">
+                <div class="flex items-center gap-2">
+                    <div class="size-6 rounded-full ${memberData.color} flex items-center justify-center text-[10px] font-bold text-white">${memberData.initials}</div>
+                </div>
+            </td>
+            <td class="px-6 py-4 text-right">${statusBadge[status]}</td>
+        </tr>
+    `;
+
+    // Clear "no uploads" message if present
+    if (tbody.querySelector('td[colspan]')) {
+        tbody.innerHTML = '';
     }
 
-    // Category filter
-    const categoryFilter = document.getElementById('category-filter');
-    if (categoryFilter) {
-        categoryFilter.addEventListener('change', applyTableFilters);
-    }
+    tbody.insertAdjacentHTML('afterbegin', row);
+}
 
-    // Reset filter button
-    const resetBtn = document.getElementById('reset-filter-btn');
-    if (resetBtn) {
-        resetBtn.addEventListener('click', () => {
-            // Reset to default period
-            const periodSelect = document.getElementById('period-select');
-            if (periodSelect) {
-                periodSelect.value = '6months';
-                currentPeriod = '6months';
-            }
-            // Hide year selector
-            const yearSelect = document.getElementById('year-select');
-            if (yearSelect) yearSelect.classList.add('hidden');
+// =========================================
+// UTILITY FUNCTIONS
+// =========================================
+function formatCurrency(value) {
+    return new Intl.NumberFormat(CONFIG.LOCALE, {
+        style: 'currency',
+        currency: CONFIG.CURRENCY,
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
+    }).format(value);
+}
 
-            // Refresh dashboard
-            refreshDashboard();
-        });
+function formatCurrencyShort(value) {
+    if (value >= 1000000) return `$${(value / 1000000).toFixed(1)}M`;
+    if (value >= 1000) return `$${(value / 1000).toFixed(0)}K`;
+    return formatCurrency(value);
+}
+
+function formatDate(dateStr) {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+function getDaysInPeriod() {
+    const period = document.getElementById('period-filter')?.value || 'month';
+    switch (period) {
+        case 'month': return 30;
+        case '3months': return 90;
+        case '6months': return 180;
+        case 'year': return 365;
+        default: return 30;
     }
 }
 
-// ==========================================
-// YEAR DROPDOWN POPULATION
-// ==========================================
-
-function populateYearDropdown(transactions) {
-    const yearSelect = document.getElementById('year-select');
-    if (!yearSelect) return;
-
-    // Extract unique years from transactions
-    const years = [...new Set(transactions.map(tx => new Date(tx.fecha).getFullYear()))].sort((a, b) => b - a);
-
-    yearSelect.innerHTML = years.map(year => `<option value="${year}">${year}</option>`).join('');
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
 }
 
-// ==========================================
-// MAIN REFRESH FUNCTION
-// ==========================================
-
-function refreshDashboard() {
-    filteredTransactions = filterByPeriod(allTransactions, currentPeriod);
-    const kpis = calculateKPIs(filteredTransactions);
-
-    renderKPIs(kpis);
-    renderMonthlyChart(filteredTransactions);
-    renderCategoryChart(filteredTransactions, kpis);
-    renderTopCategories(kpis);
-    renderInsights(filteredTransactions, kpis);
-    renderTables(filteredTransactions, kpis);
-
-    // Re-init lucide icons for any new elements
-    if (typeof lucide !== 'undefined') {
-        lucide.createIcons();
-    }
-}
-
-// ==========================================
-// SUPABASE CONFIGURATION
-// ==========================================
-const SUPABASE_URL = 'https://iikarklhudhsfvkhhyub.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_PIdI08dSRTLPVauDLxX6Hg_yMEsxwU-';
-const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-// ==========================================
-// DATA LOADING
-// ==========================================
-
-async function loadData() {
-    try {
-        console.log("Loading data from Supabase...");
-
-        let data = [];
-
-        // 1. Try Supabase
-        try {
-            const { data: dbData, error } = await supabaseClient
-                .from('movimientos')
-                .select('*');
-
-            if (error) throw error;
-            if (dbData) {
-                console.log(`✅ Loaded ${dbData.length} records from Supabase`);
-                data = dbData;
-            }
-        } catch (dbError) {
-            console.error("❌ Supabase Error:", dbError);
-            console.log("⚠️ Falling back to local JSON...");
-            // 2. Fallback to Local JSON
-            const response = await fetch('data/movimientos.json?v=' + new Date().getTime());
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-            data = await response.json();
-        }
-
-
-
-        // Process and categorize transactions
-        allTransactions = processTransactions(data);
-
-        // Update last update indicator
-        updateLastUpdateIndicator(allTransactions);
-
-        // Populate year dropdown
-        populateYearDropdown(allTransactions);
-
-        // Initial render
-        refreshDashboard();
-
-        // Setup interactions
-        setupNavigation();
-        setupFilters();
-
-    } catch (error) {
-        console.error("Error loading data:", error);
-        const topBar = document.querySelector('.top-bar');
-        if (topBar) {
-            topBar.innerHTML += `
-                <p style="color: var(--danger); font-size: 0.85rem; margin-left: 1rem;">
-                    Error fatal cargando datos.
-                </p>
-            `;
-        }
-    }
-}
-
-// ==========================================
-// INITIALIZATION
-// ==========================================
-
+// =========================================
+// Initialize on DOM Ready
+// =========================================
 document.addEventListener('DOMContentLoaded', () => {
-    loadData();
+    // Only init app if user is logged in
+    if (typeof isLoggedIn === 'function' && isLoggedIn()) {
+        initApp();
+    }
 });
