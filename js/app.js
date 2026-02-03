@@ -24,32 +24,53 @@ function initApp() {
     loadData();
 }
 
-// Load data from JSON or Supabase
+// Load data from localStorage (primary) or JSON file (fallback)
 async function loadData() {
     try {
-        // Try loading from local JSON first
-        const response = await fetch('data/movimientos.json');
-        if (response.ok) {
-            const rawData = await response.json();
-            // Normalize data keys (JSON uses lowercase, app uses PascalCase)
-            allTransactions = rawData.map(t => ({
-                Fecha: t.fecha || t.Fecha,
-                Tipo: t.tipo || t.Tipo,
-                Valor: t.valor || t.Valor || 0,
-                Categoria: t.categoria || t.Categoria || 'Otros',
-                Banco: t.banco || t.Banco || '--',
-                Detalle: t.detalle || t.Detalle || '',
-                Producto: t.producto || t.Producto || '',
-                NumeroProducto: t.numero_producto || t.NumeroProducto || ''
-            }));
-            console.log(`📊 Loaded ${allTransactions.length} transactions`);
-            applyFilters();
-            renderAll();
+        // First, try loading from localStorage (previously uploaded data)
+        const storedData = localStorage.getItem('finanzas_transactions');
+
+        if (storedData) {
+            allTransactions = JSON.parse(storedData);
+            console.log(`📊 Loaded ${allTransactions.length} transactions from localStorage`);
+        } else {
+            // Fallback to JSON file
+            const response = await fetch('data/movimientos.json');
+            if (response.ok) {
+                const rawData = await response.json();
+                // Normalize data keys (JSON uses lowercase, app uses PascalCase)
+                allTransactions = rawData.map(t => ({
+                    Fecha: t.fecha || t.Fecha,
+                    Tipo: t.tipo || t.Tipo,
+                    Valor: t.valor || t.Valor || 0,
+                    Categoria: t.categoria || t.Categoria || 'Otros',
+                    Banco: t.banco || t.Banco || '--',
+                    Detalle: t.detalle || t.Detalle || '',
+                    Producto: t.producto || t.Producto || '',
+                    NumeroProducto: t.numero_producto || t.NumeroProducto || '',
+                    Miembro: t.miembro || t.Miembro || ''
+                }));
+                console.log(`📊 Loaded ${allTransactions.length} transactions from JSON`);
+            }
         }
+
+        applyFilters();
+        renderAll();
+
     } catch (error) {
         console.error('Error loading data:', error);
         allTransactions = [];
         renderAll();
+    }
+}
+
+// Save transactions to localStorage
+function saveTransactions() {
+    try {
+        localStorage.setItem('finanzas_transactions', JSON.stringify(allTransactions));
+        console.log(`💾 Saved ${allTransactions.length} transactions to localStorage`);
+    } catch (error) {
+        console.error('Error saving transactions:', error);
     }
 }
 
@@ -140,10 +161,12 @@ function applyFilters() {
     const period = document.getElementById('period-filter')?.value || CONFIG.DEFAULT_PERIOD;
     const now = new Date();
     let startDate = new Date(0);
+    let endDate = new Date(now.getFullYear() + 1, 11, 31); // Default to far future
 
     switch (period) {
         case 'month':
             startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+            endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0); // Last day of current month
             break;
         case '3months':
             startDate = new Date(now.getFullYear(), now.getMonth() - 2, 1);
@@ -153,6 +176,7 @@ function applyFilters() {
             break;
         case 'year':
             startDate = new Date(now.getFullYear(), 0, 1);
+            endDate = new Date(now.getFullYear(), 11, 31);
             break;
         case 'all':
         default:
@@ -161,7 +185,7 @@ function applyFilters() {
 
     filteredTransactions = allTransactions.filter(t => {
         const date = new Date(t.Fecha);
-        return date >= startDate && date <= now;
+        return date >= startDate && date <= endDate;
     });
 
     // Reset pagination
@@ -198,8 +222,16 @@ function renderAll() {
 
 // KPIs
 function renderKPIs() {
-    const gastos = filteredTransactions.filter(t => t.Tipo === 'Compra' || t.Tipo === 'Retiro' || t.Tipo === 'Débito');
-    const ingresos = filteredTransactions.filter(t => t.Tipo === 'Depósito' || t.Tipo === 'Transferencia Recibida');
+    // Include all common expense types
+    const gastos = filteredTransactions.filter(t =>
+        t.Tipo === 'Compra' || t.Tipo === 'Retiro' || t.Tipo === 'Débito' ||
+        t.Tipo === 'Gasto' || t.Tipo === 'Pago' || t.Tipo === 'Cargo'
+    );
+    // Include all common income types
+    const ingresos = filteredTransactions.filter(t =>
+        t.Tipo === 'Depósito' || t.Tipo === 'Transferencia Recibida' ||
+        t.Tipo === 'Ingreso' || t.Tipo === 'Abono' || t.Tipo === 'Sueldo' || t.Tipo === 'Salario'
+    );
 
     const totalGastos = gastos.reduce((sum, t) => sum + (parseFloat(t.Valor) || 0), 0);
     const totalIngresos = ingresos.reduce((sum, t) => sum + (parseFloat(t.Valor) || 0), 0);
@@ -832,6 +864,9 @@ async function handleFile(file) {
 
         // Add to existing transactions
         allTransactions = [...allTransactions, ...newTransactions];
+
+        // Save to localStorage for persistence
+        saveTransactions();
 
         // Re-apply filters and render
         applyFilters();
