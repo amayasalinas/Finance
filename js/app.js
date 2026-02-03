@@ -353,7 +353,10 @@ function renderCategoryDonut() {
         charts.categoryDonut.destroy();
     }
 
-    const gastos = filteredTransactions.filter(t => t.Tipo === 'Compra' || t.Tipo === 'Retiro' || t.Tipo === 'Débito');
+    const gastos = filteredTransactions.filter(t =>
+        t.Tipo === 'Compra' || t.Tipo === 'Retiro' || t.Tipo === 'Débito' ||
+        t.Tipo === 'Gasto' || t.Tipo === 'Pago' || t.Tipo === 'Cargo'
+    );
     const categorySums = {};
     gastos.forEach(t => {
         const cat = t.Categoria || 'Otros';
@@ -526,7 +529,8 @@ function renderGastosTable() {
     const searchTerm = document.getElementById('search-gastos')?.value?.toLowerCase() || '';
 
     let gastos = filteredTransactions.filter(t =>
-        t.Tipo === 'Compra' || t.Tipo === 'Retiro' || t.Tipo === 'Débito'
+        t.Tipo === 'Compra' || t.Tipo === 'Retiro' || t.Tipo === 'Débito' ||
+        t.Tipo === 'Gasto' || t.Tipo === 'Pago' || t.Tipo === 'Cargo'
     );
 
     // Apply search
@@ -594,7 +598,8 @@ function renderIngresosTable() {
     if (!tbody) return;
 
     let ingresos = filteredTransactions.filter(t =>
-        t.Tipo === 'Depósito' || t.Tipo === 'Transferencia Recibida'
+        t.Tipo === 'Depósito' || t.Tipo === 'Transferencia Recibida' ||
+        t.Tipo === 'Ingreso' || t.Tipo === 'Abono' || t.Tipo === 'Sueldo' || t.Tipo === 'Salario'
     );
 
     // Sort by date descending
