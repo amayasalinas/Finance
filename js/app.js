@@ -726,18 +726,17 @@ function handleFileSelect(e) {
 }
 
 async function handleFile(file) {
-    const bank = document.getElementById('upload-bank')?.value;
     const member = document.getElementById('upload-member')?.value;
 
-    if (!bank || !member) {
-        alert('Por favor selecciona un banco y un miembro de la familia');
+    if (!member) {
+        alert('Por favor selecciona un miembro de la familia');
         return;
     }
 
-    console.log(`📁 Processing file: ${file.name} for ${bank} / ${member}`);
+    console.log(`📁 Processing file: ${file.name} for member: ${member}`);
 
     // Add to upload history (processing state)
-    addUploadHistory(file.name, bank, member, 'processing');
+    addUploadHistory(file.name, 'Detectando...', member, 'processing');
 
     try {
         const data = await file.arrayBuffer();
@@ -758,20 +757,23 @@ async function handleFile(file) {
         const headers = jsonData[0].map(h => String(h).toLowerCase().trim());
         console.log('📋 Headers found:', headers);
 
-        // Map common column names
+        // Map common column names (including banco)
         const columnMap = {
             fecha: headers.findIndex(h => h.includes('fecha') || h.includes('date')),
-            tipo: headers.findIndex(h => h.includes('tipo') || h.includes('type') || h.includes('concepto')),
+            tipo: headers.findIndex(h => h.includes('tipo') || h.includes('type')),
             valor: headers.findIndex(h => h.includes('valor') || h.includes('monto') || h.includes('amount') || h.includes('importe')),
             categoria: headers.findIndex(h => h.includes('categoria') || h.includes('category')),
             detalle: headers.findIndex(h => h.includes('detalle') || h.includes('descripcion') || h.includes('description') || h.includes('concepto')),
-            producto: headers.findIndex(h => h.includes('producto') || h.includes('cuenta') || h.includes('product'))
+            producto: headers.findIndex(h => h.includes('producto') || h.includes('cuenta') || h.includes('product')),
+            banco: headers.findIndex(h => h.includes('banco') || h.includes('bank') || h.includes('entidad'))
         };
 
         console.log('🗺️ Column mapping:', columnMap);
 
         // Process data rows (skip header)
         const newTransactions = [];
+        const banksFound = new Set();
+
         for (let i = 1; i < jsonData.length; i++) {
             const row = jsonData[i];
             if (!row || row.length === 0) continue;
@@ -783,6 +785,10 @@ async function handleFile(file) {
             let categoria = columnMap.categoria >= 0 ? row[columnMap.categoria] : 'Otros';
             let detalle = columnMap.detalle >= 0 ? row[columnMap.detalle] : '';
             let producto = columnMap.producto >= 0 ? row[columnMap.producto] : '';
+            let banco = columnMap.banco >= 0 ? row[columnMap.banco] : 'Sin banco';
+
+            // Track banks found
+            if (banco) banksFound.add(banco);
 
             // Parse date (handle Excel serial dates)
             if (typeof fecha === 'number') {
@@ -809,7 +815,7 @@ async function handleFile(file) {
                     Tipo: tipo || 'Compra',
                     Valor: valor,
                     Categoria: categoria || 'Otros',
-                    Banco: bank,
+                    Banco: banco || 'Sin banco',
                     Detalle: detalle || '',
                     Producto: producto || '',
                     Miembro: member
@@ -818,6 +824,7 @@ async function handleFile(file) {
         }
 
         console.log(`✅ Parsed ${newTransactions.length} transactions from Excel`);
+        console.log(`🏦 Banks found: ${Array.from(banksFound).join(', ')}`);
 
         if (newTransactions.length === 0) {
             throw new Error('No se encontraron transacciones válidas en el archivo');
@@ -830,13 +837,14 @@ async function handleFile(file) {
         applyFilters();
         renderAll();
 
-        // Update history to success
-        addUploadHistory(file.name, bank, member, 'success');
-        alert(`✅ Se cargaron ${newTransactions.length} transacciones desde "${file.name}"`);
+        // Update history to success with banks info
+        const banksStr = Array.from(banksFound).join(', ') || 'N/A';
+        addUploadHistory(file.name, banksStr, member, 'success');
+        alert(`✅ Se cargaron ${newTransactions.length} transacciones desde "${file.name}"\nBancos: ${banksStr}`);
 
     } catch (error) {
         console.error('Error processing file:', error);
-        addUploadHistory(file.name, bank, member, 'error');
+        addUploadHistory(file.name, 'Error', member, 'error');
         alert(`❌ Error al procesar el archivo: ${error.message}`);
     }
 }
