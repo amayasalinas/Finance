@@ -736,15 +736,109 @@ async function handleFile(file) {
 
     console.log(`📁 Processing file: ${file.name} for ${bank} / ${member}`);
 
-    // Add to upload history
+    // Add to upload history (processing state)
     addUploadHistory(file.name, bank, member, 'processing');
 
-    // TODO: Implement actual file parsing (CSV/XLSX)
-    setTimeout(() => {
+    try {
+        const data = await file.arrayBuffer();
+        const workbook = XLSX.read(data, { type: 'array' });
+
+        // Get the first sheet
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+
+        // Convert to JSON
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+        if (jsonData.length < 2) {
+            throw new Error('El archivo está vacío o no tiene datos');
+        }
+
+        // Get header row (first row)
+        const headers = jsonData[0].map(h => String(h).toLowerCase().trim());
+        console.log('📋 Headers found:', headers);
+
+        // Map common column names
+        const columnMap = {
+            fecha: headers.findIndex(h => h.includes('fecha') || h.includes('date')),
+            tipo: headers.findIndex(h => h.includes('tipo') || h.includes('type') || h.includes('concepto')),
+            valor: headers.findIndex(h => h.includes('valor') || h.includes('monto') || h.includes('amount') || h.includes('importe')),
+            categoria: headers.findIndex(h => h.includes('categoria') || h.includes('category')),
+            detalle: headers.findIndex(h => h.includes('detalle') || h.includes('descripcion') || h.includes('description') || h.includes('concepto')),
+            producto: headers.findIndex(h => h.includes('producto') || h.includes('cuenta') || h.includes('product'))
+        };
+
+        console.log('🗺️ Column mapping:', columnMap);
+
+        // Process data rows (skip header)
+        const newTransactions = [];
+        for (let i = 1; i < jsonData.length; i++) {
+            const row = jsonData[i];
+            if (!row || row.length === 0) continue;
+
+            // Get values from mapped columns
+            let fecha = columnMap.fecha >= 0 ? row[columnMap.fecha] : null;
+            let valor = columnMap.valor >= 0 ? row[columnMap.valor] : 0;
+            let tipo = columnMap.tipo >= 0 ? row[columnMap.tipo] : 'Otro';
+            let categoria = columnMap.categoria >= 0 ? row[columnMap.categoria] : 'Otros';
+            let detalle = columnMap.detalle >= 0 ? row[columnMap.detalle] : '';
+            let producto = columnMap.producto >= 0 ? row[columnMap.producto] : '';
+
+            // Parse date (handle Excel serial dates)
+            if (typeof fecha === 'number') {
+                const date = XLSX.SSF.parse_date_code(fecha);
+                fecha = `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')}`;
+            } else if (fecha) {
+                // Try to parse as date string
+                const parsedDate = new Date(fecha);
+                if (!isNaN(parsedDate)) {
+                    fecha = parsedDate.toISOString().split('T')[0];
+                }
+            }
+
+            // Parse value (remove currency symbols, commas, etc.)
+            if (typeof valor === 'string') {
+                valor = parseFloat(valor.replace(/[^0-9.-]/g, '')) || 0;
+            }
+            valor = Math.abs(valor);
+
+            // Only add if we have a valid date and value
+            if (fecha && valor > 0) {
+                newTransactions.push({
+                    Fecha: fecha,
+                    Tipo: tipo || 'Compra',
+                    Valor: valor,
+                    Categoria: categoria || 'Otros',
+                    Banco: bank,
+                    Detalle: detalle || '',
+                    Producto: producto || '',
+                    Miembro: member
+                });
+            }
+        }
+
+        console.log(`✅ Parsed ${newTransactions.length} transactions from Excel`);
+
+        if (newTransactions.length === 0) {
+            throw new Error('No se encontraron transacciones válidas en el archivo');
+        }
+
+        // Add to existing transactions
+        allTransactions = [...allTransactions, ...newTransactions];
+
+        // Re-apply filters and render
+        applyFilters();
+        renderAll();
+
+        // Update history to success
         addUploadHistory(file.name, bank, member, 'success');
-        alert(`✅ Archivo "${file.name}" procesado correctamente`);
-        loadData(); // Reload data
-    }, 2000);
+        alert(`✅ Se cargaron ${newTransactions.length} transacciones desde "${file.name}"`);
+
+    } catch (error) {
+        console.error('Error processing file:', error);
+        addUploadHistory(file.name, bank, member, 'error');
+        alert(`❌ Error al procesar el archivo: ${error.message}`);
+    }
 }
 
 function addUploadHistory(filename, bank, member, status) {
