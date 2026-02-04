@@ -298,7 +298,15 @@ function renderIncomeVsExpensesChart() {
             monthlyData[monthKey] = { income: 0, expenses: 0 };
         }
         const value = Math.abs(parseFloat(t.Valor) || 0);
-        if (t.Tipo === 'Depósito' || t.Tipo === 'Transferencia Recibida') {
+        // Income types (must match renderKPIs and table logic)
+        const isIncome = t.Tipo === 'Depósito' ||
+            t.Tipo === 'Transferencia Recibida' ||
+            t.Tipo === 'Ingreso' ||
+            t.Tipo === 'Abono' ||
+            t.Tipo === 'Sueldo' ||
+            t.Tipo === 'Salario';
+
+        if (isIncome) {
             monthlyData[monthKey].income += value;
         } else {
             monthlyData[monthKey].expenses += value;
