@@ -627,6 +627,13 @@ function renderIngresosTable() {
     // Apply advanced filters
     ingresos = filterByAdvancedCriteria(ingresos, filters);
 
+    // Calculate total for filtered income
+    const totalFiltered = ingresos.reduce((sum, t) => sum + (parseFloat(t.Valor) || 0), 0);
+    const totalElement = document.getElementById('ingresos-filtered-total');
+    if (totalElement) {
+        totalElement.textContent = formatCurrency(totalFiltered);
+    }
+
     // Sort by date descending
     ingresos.sort((a, b) => parseDateString(b.Fecha) - parseDateString(a.Fecha));
 
