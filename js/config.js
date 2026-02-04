@@ -20,7 +20,8 @@ const CONFIG = {
     // Family Members
     FAMILY_MEMBERS: [
         { id: 'isa', name: 'Isa', initials: 'I', color: 'bg-purple-500' },
-        { id: 'sebas', name: 'Sebas', initials: 'S', color: 'bg-blue-500' }
+        { id: 'sebas', name: 'Sebas', initials: 'S', color: 'bg-blue-500' },
+        { id: 'fabio', name: 'Fabio', initials: 'F', color: 'bg-green-500' }
     ],
 
     // Category Colors

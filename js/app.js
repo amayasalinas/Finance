@@ -7,6 +7,7 @@ let allTransactions = [];
 let filteredTransactions = [];
 let currentView = 'resumen';
 let charts = {};
+let selectedMembers = []; // Empty means all members selected
 let pagination = {
     gastos: { page: 1, perPage: CONFIG.ITEMS_PER_PAGE, total: 0 },
     ingresos: { page: 1, perPage: CONFIG.ITEMS_PER_PAGE, total: 0 }
@@ -21,6 +22,7 @@ function initApp() {
     setupNavigation();
     setupFilters();
     setupFileUpload();
+    initMemberFilter();
     loadData();
 }
 
@@ -185,7 +187,12 @@ function applyFilters() {
 
     filteredTransactions = allTransactions.filter(t => {
         const date = new Date(t.Fecha);
-        return date >= startDate && date <= endDate;
+        const dateInRange = date >= startDate && date <= endDate;
+
+        // Filter by members if specific members are selected
+        const memberMatch = selectedMembers.length === 0 || selectedMembers.includes(t.Miembro);
+
+        return dateInRange && memberMatch;
     });
 
     // Reset pagination
@@ -987,6 +994,132 @@ function debounce(func, wait) {
         timeout = setTimeout(later, wait);
     };
 }
+// =========================================
+// MEMBER FILTER DROPDOWN
+// =========================================
+function initMemberFilter() {
+    const container = document.getElementById('member-checkboxes');
+    if (!container) return;
+
+    // Populate checkboxes dynamically from CONFIG
+    container.innerHTML = CONFIG.FAMILY_MEMBERS.map(member => `
+        <label class="flex items-center gap-3 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg p-2 -m-1">
+            <input type="checkbox" id="member-${member.id}" value="${member.id}" checked
+                class="w-4 h-4 text-primary rounded border-slate-300 focus:ring-primary"
+                onchange="onMemberFilterChange('${member.id}')">
+            <div class="flex items-center gap-2">
+                <div class="size-6 rounded-full ${member.color} flex items-center justify-center text-[10px] font-bold text-white">${member.initials}</div>
+                <span class="text-sm">${member.name}</span>
+            </div>
+        </label>
+    `).join('');
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+        const dropdown = document.getElementById('member-dropdown');
+        const btn = document.getElementById('member-filter-btn');
+        if (dropdown && btn && !dropdown.contains(e.target) && !btn.contains(e.target)) {
+            dropdown.classList.add('hidden');
+        }
+    });
+}
+
+function toggleMemberDropdown() {
+    const dropdown = document.getElementById('member-dropdown');
+    if (dropdown) {
+        dropdown.classList.toggle('hidden');
+    }
+}
+
+function onMemberFilterChange(memberId) {
+    const allCheckbox = document.getElementById('member-all');
+
+    if (memberId === 'all') {
+        // If "All" is checked, select all members
+        if (allCheckbox.checked) {
+            selectedMembers = [];
+            CONFIG.FAMILY_MEMBERS.forEach(m => {
+                const cb = document.getElementById(`member-${m.id}`);
+                if (cb) cb.checked = true;
+            });
+        } else {
+            // If "All" is unchecked, deselect all
+            CONFIG.FAMILY_MEMBERS.forEach(m => {
+                const cb = document.getElementById(`member-${m.id}`);
+                if (cb) cb.checked = false;
+            });
+            selectedMembers = [];
+        }
+    } else {
+        // Individual member checkbox changed
+        const memberCheckbox = document.getElementById(`member-${memberId}`);
+        if (memberCheckbox.checked) {
+            // If checking and "All" was selected, need to switch to specific selection
+            if (selectedMembers.length === 0) {
+                // Was "All", now switching to specific
+                selectedMembers = CONFIG.FAMILY_MEMBERS.map(m => m.id).filter(id => id !== memberId);
+                selectedMembers.push(memberId);
+            } else {
+                selectedMembers.push(memberId);
+            }
+        } else {
+            // Unchecking a member
+            if (selectedMembers.length === 0) {
+                // Was "All", now switching to all except this one
+                selectedMembers = CONFIG.FAMILY_MEMBERS.map(m => m.id).filter(id => id !== memberId);
+            } else {
+                selectedMembers = selectedMembers.filter(id => id !== memberId);
+            }
+        }
+
+        // Update "All" checkbox state
+        const allSelected = CONFIG.FAMILY_MEMBERS.every(m => {
+            const cb = document.getElementById(`member-${m.id}`);
+            return cb && cb.checked;
+        });
+        const noneSelected = CONFIG.FAMILY_MEMBERS.every(m => {
+            const cb = document.getElementById(`member-${m.id}`);
+            return cb && !cb.checked;
+        });
+
+        if (allSelected) {
+            allCheckbox.checked = true;
+            selectedMembers = []; // Empty means all
+        } else {
+            allCheckbox.checked = false;
+        }
+
+        if (noneSelected) {
+            // If none selected, default to all
+            allCheckbox.checked = true;
+            selectedMembers = [];
+            CONFIG.FAMILY_MEMBERS.forEach(m => {
+                const cb = document.getElementById(`member-${m.id}`);
+                if (cb) cb.checked = true;
+            });
+            showNotification('Debe seleccionar al menos un miembro', 'warning');
+        }
+    }
+
+    updateMemberFilterLabel();
+    applyFilters();
+    renderAll();
+}
+
+function updateMemberFilterLabel() {
+    const label = document.getElementById('member-filter-label');
+    if (!label) return;
+
+    if (selectedMembers.length === 0) {
+        label.textContent = 'Todos los Miembros';
+    } else if (selectedMembers.length === 1) {
+        const member = CONFIG.FAMILY_MEMBERS.find(m => m.id === selectedMembers[0]);
+        label.textContent = member ? member.name : 'Un Miembro';
+    } else {
+        label.textContent = `${selectedMembers.length} Miembros`;
+    }
+}
+
 // =========================================
 // TOAST NOTIFICATIONS
 // =========================================

@@ -221,12 +221,31 @@
                             <option value="year">Este Año</option>
                             <option value="all">Todo</option>
                         </select>
-                        <button
-                            class="flex items-center gap-2 h-9 px-4 rounded-full bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark hover:border-primary transition-colors shadow-sm">
-                            <span class="material-symbols-outlined text-[18px] text-slate-400">group</span>
-                            <span class="text-sm font-medium">Todos los Miembros</span>
-                            <span class="material-symbols-outlined text-[18px] text-slate-400">arrow_drop_down</span>
-                        </button>
+                        <div class="relative">
+                            <button id="member-filter-btn"
+                                class="flex items-center gap-2 h-9 px-4 rounded-full bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark hover:border-primary transition-colors shadow-sm"
+                                onclick="toggleMemberDropdown()">
+                                <span class="material-symbols-outlined text-[18px] text-slate-400">group</span>
+                                <span id="member-filter-label" class="text-sm font-medium">Todos los Miembros</span>
+                                <span
+                                    class="material-symbols-outlined text-[18px] text-slate-400">arrow_drop_down</span>
+                            </button>
+                            <div id="member-dropdown"
+                                class="hidden absolute right-0 top-full mt-2 w-56 bg-white dark:bg-surface-dark rounded-xl border border-border-light dark:border-border-dark shadow-xl z-50">
+                                <div class="p-3 border-b border-border-light dark:border-border-dark">
+                                    <label
+                                        class="flex items-center gap-3 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg p-2 -m-2">
+                                        <input type="checkbox" id="member-all" checked
+                                            class="w-4 h-4 text-primary rounded border-slate-300 focus:ring-primary"
+                                            onchange="onMemberFilterChange('all')">
+                                        <span class="text-sm font-medium">Todos los Miembros</span>
+                                    </label>
+                                </div>
+                                <div id="member-checkboxes" class="p-3 space-y-2">
+                                    <!-- Dynamically populated -->
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -698,6 +717,7 @@
                                     <option disabled selected value="">Seleccionar miembro</option>
                                     <option value="isa">Isa</option>
                                     <option value="sebas">Sebas</option>
+                                    <option value="fabio">Fabio</option>
                                 </select>
                                 <span
                                     class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
