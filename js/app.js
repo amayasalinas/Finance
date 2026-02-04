@@ -361,6 +361,82 @@ function renderIncomeVsExpensesChart() {
     });
 }
 
+// Daily Expenses Chart
+function renderDailyExpensesChart() {
+    const ctx = document.getElementById('chart-daily-expenses');
+    if (!ctx) return;
+
+    // Destroy existing chart
+    if (charts.dailyExpenses) {
+        charts.dailyExpenses.destroy();
+    }
+
+    // Filter only expense transactions
+    const expenses = filteredTransactions.filter(t =>
+        t.Tipo === 'Compra' || t.Tipo === 'Retiro' || t.Tipo === 'Débito' ||
+        t.Tipo === 'Gasto' || t.Tipo === 'Pago' || t.Tipo === 'Cargo'
+    );
+
+    // Group by date (day level)
+    const dailyData = {};
+    expenses.forEach(t => {
+        const dateKey = t.Fecha; // Already in YYYY-MM-DD format
+        if (!dailyData[dateKey]) {
+            dailyData[dateKey] = 0;
+        }
+        dailyData[dateKey] += Math.abs(parseFloat(t.Valor) || 0);
+    });
+
+    // Sort dates and prepare data
+    const sortedDates = Object.keys(dailyData).sort();
+    const labels = sortedDates.map(d => {
+        const date = new Date(d + 'T00:00:00'); // Avoid timezone issues
+        return date.toLocaleDateString('es-CO', { day: 'numeric', month: 'short' });
+    });
+    const data = sortedDates.map(d => dailyData[d]);
+
+    charts.dailyExpenses = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [{
+                label: 'Gastos',
+                data,
+                borderColor: CONFIG.CHART_COLORS.danger,
+                backgroundColor: CONFIG.CHART_COLORS.danger + '20',
+                fill: true,
+                tension: 0.4,
+                pointRadius: 3,
+                pointHoverRadius: 5
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: (context) => `Gasto: ${formatCurrency(context.parsed.y)}`
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: { display: false },
+                    ticks: { maxRotation: 45, minRotation: 45 }
+                },
+                y: {
+                    grid: { color: '#374151' },
+                    ticks: {
+                        callback: value => formatCurrencyShort(value)
+                    }
+                }
+            }
+        }
+    });
+}
+
 function renderCategoryDonut() {
     const ctx = document.getElementById('chart-categories-donut');
     if (!ctx) return;
@@ -560,6 +636,9 @@ function renderGastosTable() {
     if (totalElement) {
         totalElement.textContent = formatCurrency(totalFiltered);
     }
+
+    // Render daily expenses chart with current filtered data
+    renderDailyExpensesChart();
 
     // Sort by date descending
     gastos.sort((a, b) => parseDateString(b.Fecha) - parseDateString(a.Fecha));
