@@ -836,7 +836,7 @@ async function handleFile(file) {
         // Map common column names (including banco)
         const columnMap = {
             fecha: headers.findIndex(h => h.includes('fecha') || h.includes('date')),
-            tipo: headers.findIndex(h => h.includes('tipo') || h.includes('type')),
+            tipo: headers.findIndex(h => h.includes('tipo') || h.includes('type') || h.includes('naturaleza') || h.includes('movimiento')),
             valor: headers.findIndex(h => h.includes('valor') || h.includes('monto') || h.includes('amount') || h.includes('importe')),
             categoria: headers.findIndex(h => h.includes('categoria') || h.includes('category')),
             detalle: headers.findIndex(h => h.includes('detalle') || h.includes('descripcion') || h.includes('description') || h.includes('concepto')),
@@ -883,10 +883,23 @@ async function handleFile(file) {
             }
 
             // Parse value (remove currency symbols, commas, etc.)
+            let rawValue = 0;
             if (typeof valor === 'string') {
-                valor = parseFloat(valor.replace(/[^0-9.-]/g, '')) || 0;
+                rawValue = parseFloat(valor.replace(/[^0-9.-]/g, '')) || 0;
+            } else if (typeof valor === 'number') {
+                rawValue = valor;
             }
-            valor = Math.abs(valor);
+
+            // Infer type from sign if strictly numerical and type is unknown
+            if ((!tipo || tipo === 'Otro') && rawValue !== 0) {
+                if (rawValue > 0) {
+                    tipo = 'Depósito';
+                } else {
+                    tipo = 'Compra';
+                }
+            }
+
+            valor = Math.abs(rawValue);
 
             // Only add if we have a valid date and value
             if (fecha && valor > 0) {
