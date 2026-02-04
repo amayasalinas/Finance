@@ -229,16 +229,24 @@ function renderAll() {
 }
 
 // KPIs
-// KPIs
 function renderKPIs() {
     // Include all common expense types (including Abono - credit card payments)
     const gastos = filteredTransactions.filter(t => {
         const isExpenseType = t.Tipo === 'Compra' || t.Tipo === 'Retiro' || t.Tipo === 'Débito' ||
             t.Tipo === 'Gasto' || t.Tipo === 'Pago' || t.Tipo === 'Cargo' || t.Tipo === 'Abono';
-        const isAbono = (t.Tipo && t.Tipo.toLowerCase().includes('abono')) ||
+
+        // Check for Abono (Credit Card Payment) but EXCLUDE Interest/Yields
+        const hasAbonoKeyword = (t.Tipo && t.Tipo.toLowerCase().includes('abono')) ||
             (t.Categoria && t.Categoria.toLowerCase().includes('abono')) ||
             (t.Detalle && t.Detalle.toLowerCase().includes('abono'));
-        return isExpenseType || isAbono;
+
+        const isInterest = (t.Tipo && t.Tipo.toLowerCase().includes('interes')) ||
+            (t.Categoria && t.Categoria.toLowerCase().includes('interes')) ||
+            (t.Detalle && t.Detalle.toLowerCase().includes('interes'));
+
+        const isAbonoPayment = hasAbonoKeyword && !isInterest;
+
+        return isExpenseType || isAbonoPayment;
     });
 
     // Include all common income types (Abono excluded - TC payments are not income)
@@ -248,12 +256,19 @@ function renderKPIs() {
             t.Tipo === 'Ingreso' || t.Tipo === 'Sueldo' || t.Tipo === 'Salario';
 
         // STRICT EXCLUSION: Any reference to Abono matches here
-        const isAbono = (t.Tipo && t.Tipo.toLowerCase().includes('abono')) ||
+        const hasAbonoKeyword = (t.Tipo && t.Tipo.toLowerCase().includes('abono')) ||
             (t.Categoria && t.Categoria.toLowerCase().includes('abono')) ||
             (t.Detalle && t.Detalle.toLowerCase().includes('abono'));
 
-        // Must be income type AND NOT abono
-        return isIncomeType && !isAbono;
+        const isInterest = (t.Tipo && t.Tipo.toLowerCase().includes('interes')) ||
+            (t.Categoria && t.Categoria.toLowerCase().includes('interes')) ||
+            (t.Detalle && t.Detalle.toLowerCase().includes('interes'));
+
+        // It is a credit card payment (to exclude) ONLY if it says Abono AND is NOT interest
+        const isCreditCardPayment = hasAbonoKeyword && !isInterest;
+
+        // Must be income type AND NOT a credit card payment
+        return isIncomeType && !isCreditCardPayment;
     });
 
     const totalGastos = gastos.reduce((sum, t) => sum + (parseFloat(t.Valor) || 0), 0);
@@ -324,10 +339,18 @@ function renderIncomeVsExpensesChart() {
             t.Tipo === 'Ingreso' ||
             t.Tipo === 'Sueldo' ||
             t.Tipo === 'Salario';
-        const isAbono = (t.Tipo && t.Tipo.toLowerCase().includes('abono')) ||
+        const hasAbonoKeyword = (t.Tipo && t.Tipo.toLowerCase().includes('abono')) ||
             (t.Categoria && t.Categoria.toLowerCase().includes('abono')) ||
             (t.Detalle && t.Detalle.toLowerCase().includes('abono'));
-        const isIncome = isIncomeType && !isAbono;
+
+        const isInterest = (t.Tipo && t.Tipo.toLowerCase().includes('interes')) ||
+            (t.Categoria && t.Categoria.toLowerCase().includes('interes')) ||
+            (t.Detalle && t.Detalle.toLowerCase().includes('interes'));
+
+        // It is a credit card payment (to exclude) ONLY if it says Abono AND is NOT interest
+        const isCreditCardPayment = hasAbonoKeyword && !isInterest;
+
+        const isIncome = isIncomeType && !isCreditCardPayment;
 
         if (isIncome) {
             monthlyData[monthKey].income += value;
@@ -399,10 +422,18 @@ function renderDailyExpensesChart(expenseData = null) {
     const expenses = expenseData || filteredTransactions.filter(t => {
         const isExpenseType = t.Tipo === 'Compra' || t.Tipo === 'Retiro' || t.Tipo === 'Débito' ||
             t.Tipo === 'Gasto' || t.Tipo === 'Pago' || t.Tipo === 'Cargo' || t.Tipo === 'Abono';
-        const isAbono = (t.Tipo && t.Tipo.toLowerCase().includes('abono')) ||
+
+        const hasAbonoKeyword = (t.Tipo && t.Tipo.toLowerCase().includes('abono')) ||
             (t.Categoria && t.Categoria.toLowerCase().includes('abono')) ||
             (t.Detalle && t.Detalle.toLowerCase().includes('abono'));
-        return isExpenseType || isAbono;
+
+        const isInterest = (t.Tipo && t.Tipo.toLowerCase().includes('interes')) ||
+            (t.Categoria && t.Categoria.toLowerCase().includes('interes')) ||
+            (t.Detalle && t.Detalle.toLowerCase().includes('interes'));
+
+        const isAbonoPayment = hasAbonoKeyword && !isInterest;
+
+        return isExpenseType || isAbonoPayment;
     });
 
     // Group by date (day level)
@@ -476,10 +507,18 @@ function renderCategoryDonut() {
     const gastos = filteredTransactions.filter(t => {
         const isExpenseType = t.Tipo === 'Compra' || t.Tipo === 'Retiro' || t.Tipo === 'Débito' ||
             t.Tipo === 'Gasto' || t.Tipo === 'Pago' || t.Tipo === 'Cargo' || t.Tipo === 'Abono';
-        const isAbono = (t.Tipo && t.Tipo.toLowerCase().includes('abono')) ||
+
+        const hasAbonoKeyword = (t.Tipo && t.Tipo.toLowerCase().includes('abono')) ||
             (t.Categoria && t.Categoria.toLowerCase().includes('abono')) ||
             (t.Detalle && t.Detalle.toLowerCase().includes('abono'));
-        return isExpenseType || isAbono;
+
+        const isInterest = (t.Tipo && t.Tipo.toLowerCase().includes('interes')) ||
+            (t.Categoria && t.Categoria.toLowerCase().includes('interes')) ||
+            (t.Detalle && t.Detalle.toLowerCase().includes('interes'));
+
+        const isAbonoPayment = hasAbonoKeyword && !isInterest;
+
+        return isExpenseType || isAbonoPayment;
     });
     const categorySums = {};
     gastos.forEach(t => {
@@ -577,10 +616,18 @@ function renderFamilyIncome() {
 
     const ingresos = filteredTransactions.filter(t => {
         const isIncomeType = t.Tipo === 'Depósito' || t.Tipo === 'Transferencia Recibida';
-        const isAbono = (t.Tipo && t.Tipo.toLowerCase().includes('abono')) ||
+
+        const hasAbonoKeyword = (t.Tipo && t.Tipo.toLowerCase().includes('abono')) ||
             (t.Categoria && t.Categoria.toLowerCase().includes('abono')) ||
             (t.Detalle && t.Detalle.toLowerCase().includes('abono'));
-        return isIncomeType && !isAbono;
+
+        const isInterest = (t.Tipo && t.Tipo.toLowerCase().includes('interes')) ||
+            (t.Categoria && t.Categoria.toLowerCase().includes('interes')) ||
+            (t.Detalle && t.Detalle.toLowerCase().includes('interes'));
+
+        const isCreditCardPayment = hasAbonoKeyword && !isInterest;
+
+        return isIncomeType && !isCreditCardPayment;
     });
     const totalIncome = ingresos.reduce((sum, t) => sum + Math.abs(parseFloat(t.Valor) || 0), 0);
 
@@ -625,10 +672,18 @@ function renderAccounts() {
         const bank = t.Banco || 'Otro';
         const value = parseFloat(t.Valor) || 0;
         const isIncomeType = t.Tipo === 'Depósito' || t.Tipo === 'Transferencia Recibida';
-        const isAbono = (t.Tipo && t.Tipo.toLowerCase().includes('abono')) ||
+
+        const hasAbonoKeyword = (t.Tipo && t.Tipo.toLowerCase().includes('abono')) ||
             (t.Categoria && t.Categoria.toLowerCase().includes('abono')) ||
             (t.Detalle && t.Detalle.toLowerCase().includes('abono'));
-        const isIncome = isIncomeType && !isAbono;
+
+        const isInterest = (t.Tipo && t.Tipo.toLowerCase().includes('interes')) ||
+            (t.Categoria && t.Categoria.toLowerCase().includes('interes')) ||
+            (t.Detalle && t.Detalle.toLowerCase().includes('interes'));
+
+        const isCreditCardPayment = hasAbonoKeyword && !isInterest;
+
+        const isIncome = isIncomeType && !isCreditCardPayment;
         bankBalances[bank] = (bankBalances[bank] || 0) + (isIncome ? value : -value);
     });
 
@@ -757,10 +812,18 @@ function renderIngresosTable() {
         const isIncomeType = t.Tipo === 'Depósito' || t.Tipo === 'Transferencia Recibida' ||
             t.Tipo === 'Ingreso' || t.Tipo === 'Sueldo' || t.Tipo === 'Salario';
         // Exclude any transaction with 'Abono' in Tipo, Categoria, or Detalle
-        const isAbono = (t.Tipo && t.Tipo.toLowerCase().includes('abono')) ||
+        const hasAbonoKeyword = (t.Tipo && t.Tipo.toLowerCase().includes('abono')) ||
             (t.Categoria && t.Categoria.toLowerCase().includes('abono')) ||
             (t.Detalle && t.Detalle.toLowerCase().includes('abono'));
-        return isIncomeType && !isAbono;
+
+        const isInterest = (t.Tipo && t.Tipo.toLowerCase().includes('interes')) ||
+            (t.Categoria && t.Categoria.toLowerCase().includes('interes')) ||
+            (t.Detalle && t.Detalle.toLowerCase().includes('interes'));
+
+        // It is a credit card payment (to exclude) ONLY if it says Abono AND is NOT interest
+        const isCreditCardPayment = hasAbonoKeyword && !isInterest;
+
+        return isIncomeType && !isCreditCardPayment;
     });
 
     // Apply advanced filters
@@ -840,20 +903,37 @@ async function fetchAIRecommendations() {
     `;
 
     // Calculate summary data
-    // Calculate summary data
     const gastos = filteredTransactions.filter(t => {
-        const isExpenseType = t.Tipo === 'Compra' || t.Tipo === 'Retiro' || t.Tipo === 'Débito' || t.Tipo === 'Abono';
-        const isAbono = (t.Tipo && t.Tipo.toLowerCase().includes('abono')) ||
+        const isExpenseType = t.Tipo === 'Compra' || t.Tipo === 'Retiro' || t.Tipo === 'Débito' ||
+            t.Tipo === 'Gasto' || t.Tipo === 'Pago' || t.Tipo === 'Cargo' || t.Tipo === 'Abono';
+
+        const hasAbonoKeyword = (t.Tipo && t.Tipo.toLowerCase().includes('abono')) ||
             (t.Categoria && t.Categoria.toLowerCase().includes('abono')) ||
             (t.Detalle && t.Detalle.toLowerCase().includes('abono'));
-        return isExpenseType || isAbono;
+
+        const isInterest = (t.Tipo && t.Tipo.toLowerCase().includes('interes')) ||
+            (t.Categoria && t.Categoria.toLowerCase().includes('interes')) ||
+            (t.Detalle && t.Detalle.toLowerCase().includes('interes'));
+
+        const isAbonoPayment = hasAbonoKeyword && !isInterest;
+
+        return isExpenseType || isAbonoPayment;
     });
+
     const ingresos = filteredTransactions.filter(t => {
         const isIncomeType = t.Tipo === 'Depósito' || t.Tipo === 'Transferencia Recibida';
-        const isAbono = (t.Tipo && t.Tipo.toLowerCase().includes('abono')) ||
+
+        const hasAbonoKeyword = (t.Tipo && t.Tipo.toLowerCase().includes('abono')) ||
             (t.Categoria && t.Categoria.toLowerCase().includes('abono')) ||
             (t.Detalle && t.Detalle.toLowerCase().includes('abono'));
-        return isIncomeType && !isAbono;
+
+        const isInterest = (t.Tipo && t.Tipo.toLowerCase().includes('interes')) ||
+            (t.Categoria && t.Categoria.toLowerCase().includes('interes')) ||
+            (t.Detalle && t.Detalle.toLowerCase().includes('interes'));
+
+        const isCreditCardPayment = hasAbonoKeyword && !isInterest;
+
+        return isIncomeType && !isCreditCardPayment;
     });
     const totalGastos = gastos.reduce((sum, t) => sum + Math.abs(parseFloat(t.Valor) || 0), 0);
     const totalIngresos = ingresos.reduce((sum, t) => sum + Math.abs(parseFloat(t.Valor) || 0), 0);
