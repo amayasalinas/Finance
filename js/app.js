@@ -362,7 +362,7 @@ function renderIncomeVsExpensesChart() {
 }
 
 // Daily Expenses Chart
-function renderDailyExpensesChart() {
+function renderDailyExpensesChart(expenseData = null) {
     const ctx = document.getElementById('chart-daily-expenses');
     if (!ctx) return;
 
@@ -371,8 +371,8 @@ function renderDailyExpensesChart() {
         charts.dailyExpenses.destroy();
     }
 
-    // Filter only expense transactions
-    const expenses = filteredTransactions.filter(t =>
+    // Use provided data or filter from global filteredTransactions
+    const expenses = expenseData || filteredTransactions.filter(t =>
         t.Tipo === 'Compra' || t.Tipo === 'Retiro' || t.Tipo === 'Débito' ||
         t.Tipo === 'Gasto' || t.Tipo === 'Pago' || t.Tipo === 'Cargo'
     );
@@ -638,7 +638,7 @@ function renderGastosTable() {
     }
 
     // Render daily expenses chart with current filtered data
-    renderDailyExpensesChart();
+    renderDailyExpensesChart(gastos);
 
     // Sort by date descending
     gastos.sort((a, b) => parseDateString(b.Fecha) - parseDateString(a.Fecha));
