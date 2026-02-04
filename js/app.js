@@ -229,26 +229,45 @@ function renderAll() {
 }
 
 // KPIs
+// KPIs
 function renderKPIs() {
-    // Include all common expense types
-    const gastos = filteredTransactions.filter(t =>
-        t.Tipo === 'Compra' || t.Tipo === 'Retiro' || t.Tipo === 'Débito' ||
-        t.Tipo === 'Gasto' || t.Tipo === 'Pago' || t.Tipo === 'Cargo'
-    );
+    // Include all common expense types (including Abono - credit card payments)
+    const gastos = filteredTransactions.filter(t => {
+        const isExpenseType = t.Tipo === 'Compra' || t.Tipo === 'Retiro' || t.Tipo === 'Débito' ||
+            t.Tipo === 'Gasto' || t.Tipo === 'Pago' || t.Tipo === 'Cargo' || t.Tipo === 'Abono';
+        const isAbono = (t.Tipo && t.Tipo.toLowerCase().includes('abono')) ||
+            (t.Categoria && t.Categoria.toLowerCase().includes('abono')) ||
+            (t.Detalle && t.Detalle.toLowerCase().includes('abono'));
+        return isExpenseType || isAbono;
+    });
+
     // Include all common income types (Abono excluded - TC payments are not income)
-    const ingresos = filteredTransactions.filter(t =>
-        t.Tipo === 'Depósito' || t.Tipo === 'Transferencia Recibida' ||
-        t.Tipo === 'Ingreso' || t.Tipo === 'Sueldo' || t.Tipo === 'Salario'
-    );
+    const ingresos = filteredTransactions.filter(t => {
+        // Base income types
+        const isIncomeType = t.Tipo === 'Depósito' || t.Tipo === 'Transferencia Recibida' ||
+            t.Tipo === 'Ingreso' || t.Tipo === 'Sueldo' || t.Tipo === 'Salario';
+
+        // STRICT EXCLUSION: Any reference to Abono matches here
+        const isAbono = (t.Tipo && t.Tipo.toLowerCase().includes('abono')) ||
+            (t.Categoria && t.Categoria.toLowerCase().includes('abono')) ||
+            (t.Detalle && t.Detalle.toLowerCase().includes('abono'));
+
+        // Must be income type AND NOT abono
+        return isIncomeType && !isAbono;
+    });
 
     const totalGastos = gastos.reduce((sum, t) => sum + (parseFloat(t.Valor) || 0), 0);
     const totalIngresos = ingresos.reduce((sum, t) => sum + (parseFloat(t.Valor) || 0), 0);
     const balance = totalIngresos - totalGastos;
 
     // Update KPI values
-    document.getElementById('kpi-balance').textContent = formatCurrency(balance);
-    document.getElementById('kpi-income').textContent = formatCurrency(totalIngresos);
-    document.getElementById('kpi-expenses').textContent = formatCurrency(totalGastos);
+    const kpiBalance = document.getElementById('kpi-balance');
+    const kpiIncome = document.getElementById('kpi-income');
+    const kpiExpenses = document.getElementById('kpi-expenses');
+
+    if (kpiBalance) kpiBalance.textContent = formatCurrency(balance);
+    if (kpiIncome) kpiIncome.textContent = formatCurrency(totalIngresos);
+    if (kpiExpenses) kpiExpenses.textContent = formatCurrency(totalGastos);
 
     // Update gastos view stats
     const gastosTotal = document.getElementById('gastos-total-stat');
@@ -300,11 +319,15 @@ function renderIncomeVsExpensesChart() {
         const value = Math.abs(parseFloat(t.Valor) || 0);
         // Income types (must match renderKPIs and table logic)
         // Note: 'Abono' removed as TC payments are not income
-        const isIncome = t.Tipo === 'Depósito' ||
+        const isIncomeType = t.Tipo === 'Depósito' ||
             t.Tipo === 'Transferencia Recibida' ||
             t.Tipo === 'Ingreso' ||
             t.Tipo === 'Sueldo' ||
             t.Tipo === 'Salario';
+        const isAbono = (t.Tipo && t.Tipo.toLowerCase().includes('abono')) ||
+            (t.Categoria && t.Categoria.toLowerCase().includes('abono')) ||
+            (t.Detalle && t.Detalle.toLowerCase().includes('abono'));
+        const isIncome = isIncomeType && !isAbono;
 
         if (isIncome) {
             monthlyData[monthKey].income += value;
@@ -372,10 +395,15 @@ function renderDailyExpensesChart(expenseData = null) {
     }
 
     // Use provided data or filter from global filteredTransactions
-    const expenses = expenseData || filteredTransactions.filter(t =>
-        t.Tipo === 'Compra' || t.Tipo === 'Retiro' || t.Tipo === 'Débito' ||
-        t.Tipo === 'Gasto' || t.Tipo === 'Pago' || t.Tipo === 'Cargo'
-    );
+    // Use provided data or filter from global filteredTransactions
+    const expenses = expenseData || filteredTransactions.filter(t => {
+        const isExpenseType = t.Tipo === 'Compra' || t.Tipo === 'Retiro' || t.Tipo === 'Débito' ||
+            t.Tipo === 'Gasto' || t.Tipo === 'Pago' || t.Tipo === 'Cargo' || t.Tipo === 'Abono';
+        const isAbono = (t.Tipo && t.Tipo.toLowerCase().includes('abono')) ||
+            (t.Categoria && t.Categoria.toLowerCase().includes('abono')) ||
+            (t.Detalle && t.Detalle.toLowerCase().includes('abono'));
+        return isExpenseType || isAbono;
+    });
 
     // Group by date (day level)
     const dailyData = {};
@@ -445,10 +473,14 @@ function renderCategoryDonut() {
         charts.categoryDonut.destroy();
     }
 
-    const gastos = filteredTransactions.filter(t =>
-        t.Tipo === 'Compra' || t.Tipo === 'Retiro' || t.Tipo === 'Débito' ||
-        t.Tipo === 'Gasto' || t.Tipo === 'Pago' || t.Tipo === 'Cargo'
-    );
+    const gastos = filteredTransactions.filter(t => {
+        const isExpenseType = t.Tipo === 'Compra' || t.Tipo === 'Retiro' || t.Tipo === 'Débito' ||
+            t.Tipo === 'Gasto' || t.Tipo === 'Pago' || t.Tipo === 'Cargo' || t.Tipo === 'Abono';
+        const isAbono = (t.Tipo && t.Tipo.toLowerCase().includes('abono')) ||
+            (t.Categoria && t.Categoria.toLowerCase().includes('abono')) ||
+            (t.Detalle && t.Detalle.toLowerCase().includes('abono'));
+        return isExpenseType || isAbono;
+    });
     const categorySums = {};
     gastos.forEach(t => {
         const cat = t.Categoria || 'Otros';
@@ -543,7 +575,13 @@ function renderFamilyIncome() {
     const container = document.getElementById('family-income-list');
     if (!container) return;
 
-    const ingresos = filteredTransactions.filter(t => t.Tipo === 'Depósito' || t.Tipo === 'Transferencia Recibida');
+    const ingresos = filteredTransactions.filter(t => {
+        const isIncomeType = t.Tipo === 'Depósito' || t.Tipo === 'Transferencia Recibida';
+        const isAbono = (t.Tipo && t.Tipo.toLowerCase().includes('abono')) ||
+            (t.Categoria && t.Categoria.toLowerCase().includes('abono')) ||
+            (t.Detalle && t.Detalle.toLowerCase().includes('abono'));
+        return isIncomeType && !isAbono;
+    });
     const totalIncome = ingresos.reduce((sum, t) => sum + Math.abs(parseFloat(t.Valor) || 0), 0);
 
     // Mock family data - in production this would be per-member tracking
@@ -586,7 +624,11 @@ function renderAccounts() {
     filteredTransactions.forEach(t => {
         const bank = t.Banco || 'Otro';
         const value = parseFloat(t.Valor) || 0;
-        const isIncome = t.Tipo === 'Depósito' || t.Tipo === 'Transferencia Recibida';
+        const isIncomeType = t.Tipo === 'Depósito' || t.Tipo === 'Transferencia Recibida';
+        const isAbono = (t.Tipo && t.Tipo.toLowerCase().includes('abono')) ||
+            (t.Categoria && t.Categoria.toLowerCase().includes('abono')) ||
+            (t.Detalle && t.Detalle.toLowerCase().includes('abono'));
+        const isIncome = isIncomeType && !isAbono;
         bankBalances[bank] = (bankBalances[bank] || 0) + (isIncome ? value : -value);
     });
 
@@ -622,10 +664,15 @@ function renderGastosTable() {
     const filters = getGastosFilterValues();
 
     // Start with expense-type transactions from all (not just filtered by global period)
-    let gastos = allTransactions.filter(t =>
-        t.Tipo === 'Compra' || t.Tipo === 'Retiro' || t.Tipo === 'Débito' ||
-        t.Tipo === 'Gasto' || t.Tipo === 'Pago' || t.Tipo === 'Cargo'
-    );
+    // Start with expense-type transactions from all (not just filtered by global period)
+    let gastos = allTransactions.filter(t => {
+        const isExpenseType = t.Tipo === 'Compra' || t.Tipo === 'Retiro' || t.Tipo === 'Débito' ||
+            t.Tipo === 'Gasto' || t.Tipo === 'Pago' || t.Tipo === 'Cargo' || t.Tipo === 'Abono';
+        const isAbono = (t.Tipo && t.Tipo.toLowerCase().includes('abono')) ||
+            (t.Categoria && t.Categoria.toLowerCase().includes('abono')) ||
+            (t.Detalle && t.Detalle.toLowerCase().includes('abono'));
+        return isExpenseType || isAbono;
+    });
 
     // Apply advanced filters
     gastos = filterByAdvancedCriteria(gastos, filters);
@@ -706,10 +753,15 @@ function renderIngresosTable() {
     const filters = getIngresosFilterValues();
 
     // Start with income-type transactions from all (Abono excluded - TC payments are not income)
-    let ingresos = allTransactions.filter(t =>
-        t.Tipo === 'Depósito' || t.Tipo === 'Transferencia Recibida' ||
-        t.Tipo === 'Ingreso' || t.Tipo === 'Sueldo' || t.Tipo === 'Salario'
-    );
+    let ingresos = allTransactions.filter(t => {
+        const isIncomeType = t.Tipo === 'Depósito' || t.Tipo === 'Transferencia Recibida' ||
+            t.Tipo === 'Ingreso' || t.Tipo === 'Sueldo' || t.Tipo === 'Salario';
+        // Exclude any transaction with 'Abono' in Tipo, Categoria, or Detalle
+        const isAbono = (t.Tipo && t.Tipo.toLowerCase().includes('abono')) ||
+            (t.Categoria && t.Categoria.toLowerCase().includes('abono')) ||
+            (t.Detalle && t.Detalle.toLowerCase().includes('abono'));
+        return isIncomeType && !isAbono;
+    });
 
     // Apply advanced filters
     ingresos = filterByAdvancedCriteria(ingresos, filters);
@@ -788,8 +840,21 @@ async function fetchAIRecommendations() {
     `;
 
     // Calculate summary data
-    const gastos = filteredTransactions.filter(t => t.Tipo === 'Compra' || t.Tipo === 'Retiro' || t.Tipo === 'Débito');
-    const ingresos = filteredTransactions.filter(t => t.Tipo === 'Depósito' || t.Tipo === 'Transferencia Recibida');
+    // Calculate summary data
+    const gastos = filteredTransactions.filter(t => {
+        const isExpenseType = t.Tipo === 'Compra' || t.Tipo === 'Retiro' || t.Tipo === 'Débito' || t.Tipo === 'Abono';
+        const isAbono = (t.Tipo && t.Tipo.toLowerCase().includes('abono')) ||
+            (t.Categoria && t.Categoria.toLowerCase().includes('abono')) ||
+            (t.Detalle && t.Detalle.toLowerCase().includes('abono'));
+        return isExpenseType || isAbono;
+    });
+    const ingresos = filteredTransactions.filter(t => {
+        const isIncomeType = t.Tipo === 'Depósito' || t.Tipo === 'Transferencia Recibida';
+        const isAbono = (t.Tipo && t.Tipo.toLowerCase().includes('abono')) ||
+            (t.Categoria && t.Categoria.toLowerCase().includes('abono')) ||
+            (t.Detalle && t.Detalle.toLowerCase().includes('abono'));
+        return isIncomeType && !isAbono;
+    });
     const totalGastos = gastos.reduce((sum, t) => sum + Math.abs(parseFloat(t.Valor) || 0), 0);
     const totalIngresos = ingresos.reduce((sum, t) => sum + Math.abs(parseFloat(t.Valor) || 0), 0);
 
@@ -988,10 +1053,10 @@ async function handleFile(file) {
 
             valor = Math.abs(rawValue);
 
-            // Normalize Income types
+            // Normalize Income types (excluding 'abono' - TC payments are not income)
             if (tipo) {
                 const lower = String(tipo).toLowerCase();
-                if (lower.includes('abono') || lower.includes('crédito') || lower.includes('credito') || lower.includes('entrada') || lower.includes('recibida') || lower.includes('recaudo')) {
+                if (lower.includes('crédito') || lower.includes('credito') || lower.includes('entrada') || lower.includes('recibida') || lower.includes('recaudo')) {
                     tipo = 'Depósito';
                 }
             }
