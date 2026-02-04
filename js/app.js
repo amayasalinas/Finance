@@ -216,6 +216,7 @@ function changePage(type, delta) {
 // RENDER FUNCTIONS
 // =========================================
 function renderAll() {
+    populateAdvancedFilters();
     renderKPIs();
     renderCharts();
     renderRecentTransactions();
@@ -533,21 +534,17 @@ function renderGastosTable() {
     const tbody = document.getElementById('table-gastos-body');
     if (!tbody) return;
 
-    const searchTerm = document.getElementById('search-gastos')?.value?.toLowerCase() || '';
+    // Get all filter values
+    const filters = getGastosFilterValues();
 
-    let gastos = filteredTransactions.filter(t =>
+    // Start with expense-type transactions from all (not just filtered by global period)
+    let gastos = allTransactions.filter(t =>
         t.Tipo === 'Compra' || t.Tipo === 'Retiro' || t.Tipo === 'Débito' ||
         t.Tipo === 'Gasto' || t.Tipo === 'Pago' || t.Tipo === 'Cargo'
     );
 
-    // Apply search
-    if (searchTerm) {
-        gastos = gastos.filter(t =>
-            (t.Detalle || '').toLowerCase().includes(searchTerm) ||
-            (t.Categoria || '').toLowerCase().includes(searchTerm) ||
-            String(t.Valor).includes(searchTerm)
-        );
-    }
+    // Apply advanced filters
+    gastos = filterByAdvancedCriteria(gastos, filters);
 
     // Sort by date descending
     gastos.sort((a, b) => new Date(b.Fecha) - new Date(a.Fecha));
@@ -611,10 +608,17 @@ function renderIngresosTable() {
     const tbody = document.getElementById('table-ingresos-body');
     if (!tbody) return;
 
-    let ingresos = filteredTransactions.filter(t =>
+    // Get all filter values
+    const filters = getIngresosFilterValues();
+
+    // Start with income-type transactions from all
+    let ingresos = allTransactions.filter(t =>
         t.Tipo === 'Depósito' || t.Tipo === 'Transferencia Recibida' ||
         t.Tipo === 'Ingreso' || t.Tipo === 'Abono' || t.Tipo === 'Sueldo' || t.Tipo === 'Salario'
     );
+
+    // Apply advanced filters
+    ingresos = filterByAdvancedCriteria(ingresos, filters);
 
     // Sort by date descending
     ingresos.sort((a, b) => new Date(b.Fecha) - new Date(a.Fecha));
@@ -994,6 +998,156 @@ function debounce(func, wait) {
         timeout = setTimeout(later, wait);
     };
 }
+// =========================================
+// GASTOS & INGRESOS ADVANCED FILTERS
+// =========================================
+const MONTHS_ES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+
+function populateAdvancedFilters() {
+    // Extract unique values from all transactions
+    const years = [...new Set(allTransactions.map(t => new Date(t.Fecha).getFullYear()).filter(y => !isNaN(y)))].sort((a, b) => b - a);
+    const months = [...new Set(allTransactions.map(t => new Date(t.Fecha).getMonth()).filter(m => !isNaN(m)))].sort((a, b) => a - b);
+    const banks = [...new Set(allTransactions.map(t => t.Banco).filter(b => b && b !== '--'))];
+    const categories = [...new Set(allTransactions.map(t => t.Categoria).filter(c => c))];
+
+    // Populate Gastos filters
+    populateSelect('filter-member-gastos', CONFIG.FAMILY_MEMBERS.map(m => ({ value: m.id, label: m.name })), 'Miembro: Todos');
+    populateSelect('filter-month-gastos', months.map(m => ({ value: m, label: MONTHS_ES[m] })), 'Mes: Todos');
+    populateSelect('filter-year-gastos', years.map(y => ({ value: y, label: y })), 'Año: Todos');
+    populateSelect('filter-bank-gastos', banks.map(b => ({ value: b, label: b })), 'Banco: Todos');
+    populateSelect('filter-category-gastos', categories.map(c => ({ value: c, label: c })), 'Categoría: Todas');
+
+    // Populate Ingresos filters
+    populateSelect('filter-member-ingresos', CONFIG.FAMILY_MEMBERS.map(m => ({ value: m.id, label: m.name })), 'Miembro: Todos');
+    populateSelect('filter-month-ingresos', months.map(m => ({ value: m, label: MONTHS_ES[m] })), 'Mes: Todos');
+    populateSelect('filter-year-ingresos', years.map(y => ({ value: y, label: y })), 'Año: Todos');
+    populateSelect('filter-bank-ingresos', banks.map(b => ({ value: b, label: b })), 'Banco: Todos');
+    populateSelect('filter-category-ingresos', categories.map(c => ({ value: c, label: c })), 'Categoría: Todas');
+
+    // Populate Resumen filters
+    populateSelect('filter-month-resumen', months.map(m => ({ value: m, label: MONTHS_ES[m] })), 'Mes: Todos');
+    populateSelect('filter-year-resumen', years.map(y => ({ value: y, label: y })), 'Año: Todos');
+}
+
+function applyResumenFilters() {
+    const monthFilter = document.getElementById('filter-month-resumen')?.value || 'all';
+    const yearFilter = document.getElementById('filter-year-resumen')?.value || 'all';
+
+    // Filter transactions based on selected month and year
+    filteredTransactions = allTransactions.filter(t => {
+        const date = new Date(t.Fecha);
+
+        // Month filter
+        if (monthFilter !== 'all' && date.getMonth() !== parseInt(monthFilter)) return false;
+
+        // Year filter
+        if (yearFilter !== 'all' && date.getFullYear() !== parseInt(yearFilter)) return false;
+
+        // Member filter (from selectedMembers global)
+        if (selectedMembers.length > 0 && !selectedMembers.includes(t.Miembro)) return false;
+
+        return true;
+    });
+
+    // Re-render affected components
+    renderKPIs();
+    renderCharts();
+    renderRecentTransactions();
+    renderCategoryDonut();
+    renderFamilyIncome();
+    renderAccounts();
+}
+
+function populateSelect(selectId, options, defaultLabel) {
+    const select = document.getElementById(selectId);
+    if (!select) return;
+
+    select.innerHTML = `<option value="all">${defaultLabel}</option>` +
+        options.map(opt => `<option value="${opt.value}">${opt.label}</option>`).join('');
+}
+
+function applyGastosFilters() {
+    renderGastosTable();
+}
+
+function applyIngresosFilters() {
+    renderIngresosTable();
+}
+
+function clearGastosFilters() {
+    document.getElementById('filter-member-gastos').value = 'all';
+    document.getElementById('filter-month-gastos').value = 'all';
+    document.getElementById('filter-year-gastos').value = 'all';
+    document.getElementById('filter-bank-gastos').value = 'all';
+    document.getElementById('filter-category-gastos').value = 'all';
+    document.getElementById('search-gastos').value = '';
+    applyGastosFilters();
+    showNotification('Filtros de gastos limpiados', 'info');
+}
+
+function clearIngresosFilters() {
+    document.getElementById('filter-member-ingresos').value = 'all';
+    document.getElementById('filter-month-ingresos').value = 'all';
+    document.getElementById('filter-year-ingresos').value = 'all';
+    document.getElementById('filter-bank-ingresos').value = 'all';
+    document.getElementById('filter-category-ingresos').value = 'all';
+    applyIngresosFilters();
+    showNotification('Filtros de ingresos limpiados', 'info');
+}
+
+function getGastosFilterValues() {
+    return {
+        member: document.getElementById('filter-member-gastos')?.value || 'all',
+        month: document.getElementById('filter-month-gastos')?.value || 'all',
+        year: document.getElementById('filter-year-gastos')?.value || 'all',
+        bank: document.getElementById('filter-bank-gastos')?.value || 'all',
+        category: document.getElementById('filter-category-gastos')?.value || 'all',
+        search: document.getElementById('search-gastos')?.value?.toLowerCase()?.trim() || ''
+    };
+}
+
+function getIngresosFilterValues() {
+    return {
+        member: document.getElementById('filter-member-ingresos')?.value || 'all',
+        month: document.getElementById('filter-month-ingresos')?.value || 'all',
+        year: document.getElementById('filter-year-ingresos')?.value || 'all',
+        bank: document.getElementById('filter-bank-ingresos')?.value || 'all',
+        category: document.getElementById('filter-category-ingresos')?.value || 'all'
+    };
+}
+
+function filterByAdvancedCriteria(transactions, filters) {
+    return transactions.filter(t => {
+        const date = new Date(t.Fecha);
+
+        // Member filter
+        if (filters.member !== 'all' && t.Miembro !== filters.member) return false;
+
+        // Month filter
+        if (filters.month !== 'all' && date.getMonth() !== parseInt(filters.month)) return false;
+
+        // Year filter
+        if (filters.year !== 'all' && date.getFullYear() !== parseInt(filters.year)) return false;
+
+        // Bank filter
+        if (filters.bank !== 'all' && t.Banco !== filters.bank) return false;
+
+        // Category filter
+        if (filters.category !== 'all' && t.Categoria !== filters.category) return false;
+
+        // Search filter
+        if (filters.search) {
+            const searchMatch = (t.Detalle || '').toLowerCase().includes(filters.search) ||
+                (t.Categoria || '').toLowerCase().includes(filters.search) ||
+                String(t.Valor).includes(filters.search);
+            if (!searchMatch) return false;
+        }
+
+        return true;
+    });
+}
+
 // =========================================
 // MEMBER FILTER DROPDOWN
 // =========================================

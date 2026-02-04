@@ -207,19 +207,15 @@
                             todas las cuentas.</p>
                     </div>
                     <div class="flex flex-wrap gap-3">
-                        <button id="filter-month-btn"
-                            class="flex items-center gap-2 h-9 px-4 rounded-full bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark hover:border-primary transition-colors shadow-sm">
-                            <span class="material-symbols-outlined text-[18px] text-slate-400">calendar_month</span>
-                            <span id="current-month-label" class="text-sm font-medium">Este Mes</span>
-                            <span class="material-symbols-outlined text-[18px] text-slate-400">arrow_drop_down</span>
-                        </button>
-                        <select id="period-filter"
-                            class="h-9 px-4 rounded-full bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark text-sm font-medium focus:ring-primary">
-                            <option value="month">Este Mes</option>
-                            <option value="3months">Últimos 3 Meses</option>
-                            <option value="6months" selected>Últimos 6 Meses</option>
-                            <option value="year">Este Año</option>
-                            <option value="all">Todo</option>
+                        <select id="filter-month-resumen"
+                            class="h-9 px-4 rounded-full bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark text-sm font-medium focus:ring-primary"
+                            onchange="applyResumenFilters()">
+                            <option value="all">Mes: Todos</option>
+                        </select>
+                        <select id="filter-year-resumen"
+                            class="h-9 px-4 rounded-full bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark text-sm font-medium focus:ring-primary"
+                            onchange="applyResumenFilters()">
+                            <option value="all">Año: Todos</option>
                         </select>
                         <div class="relative">
                             <button id="member-filter-btn"
@@ -507,19 +503,32 @@
                     <!-- Filter chips -->
                     <div class="flex gap-3 flex-wrap items-center">
                         <select id="filter-member-gastos"
-                            class="h-9 px-4 rounded-lg border border-border-light dark:border-transparent bg-surface-light dark:bg-[#282e39] text-sm font-medium">
+                            class="h-9 px-4 rounded-lg border border-border-light dark:border-transparent bg-surface-light dark:bg-[#282e39] text-sm font-medium"
+                            onchange="applyGastosFilters()">
                             <option value="all">Miembro: Todos</option>
                         </select>
+                        <select id="filter-month-gastos"
+                            class="h-9 px-4 rounded-lg border border-border-light dark:border-transparent bg-surface-light dark:bg-[#282e39] text-sm font-medium"
+                            onchange="applyGastosFilters()">
+                            <option value="all">Mes: Todos</option>
+                        </select>
+                        <select id="filter-year-gastos"
+                            class="h-9 px-4 rounded-lg border border-border-light dark:border-transparent bg-surface-light dark:bg-[#282e39] text-sm font-medium"
+                            onchange="applyGastosFilters()">
+                            <option value="all">Año: Todos</option>
+                        </select>
                         <select id="filter-bank-gastos"
-                            class="h-9 px-4 rounded-lg border border-border-light dark:border-transparent bg-surface-light dark:bg-[#282e39] text-sm font-medium">
+                            class="h-9 px-4 rounded-lg border border-border-light dark:border-transparent bg-surface-light dark:bg-[#282e39] text-sm font-medium"
+                            onchange="applyGastosFilters()">
                             <option value="all">Banco: Todos</option>
                         </select>
                         <select id="filter-category-gastos"
-                            class="h-9 px-4 rounded-lg border border-border-light dark:border-transparent bg-surface-light dark:bg-[#282e39] text-sm font-medium">
+                            class="h-9 px-4 rounded-lg border border-border-light dark:border-transparent bg-surface-light dark:bg-[#282e39] text-sm font-medium"
+                            onchange="applyGastosFilters()">
                             <option value="all">Categoría: Todas</option>
                         </select>
-                        <button id="clear-filters-gastos"
-                            class="ml-auto text-primary text-sm font-bold hover:underline">Limpiar Filtros</button>
+                        <button id="clear-filters-gastos" class="ml-auto text-primary text-sm font-bold hover:underline"
+                            onclick="clearGastosFilters()">Limpiar Filtros</button>
                     </div>
                 </div>
 
@@ -635,27 +644,34 @@
                     <div
                         class="flex flex-wrap items-center justify-between gap-4 p-4 border-b border-border-light dark:border-border-dark bg-slate-50 dark:bg-[#1c212b]">
                         <div class="flex flex-wrap gap-3">
-                            <select id="filter-date-ingresos"
-                                class="h-9 px-3 rounded-lg border border-border-light dark:border-border-dark bg-surface-light dark:bg-[#282e39] text-sm font-medium">
-                                <option value="month">Fecha: Este Mes</option>
-                                <option value="3months">Últimos 3 Meses</option>
-                                <option value="all">Todo</option>
-                            </select>
                             <select id="filter-member-ingresos"
-                                class="h-9 px-3 rounded-lg border border-border-light dark:border-border-dark bg-surface-light dark:bg-[#282e39] text-sm font-medium">
+                                class="h-9 px-3 rounded-lg border border-border-light dark:border-border-dark bg-surface-light dark:bg-[#282e39] text-sm font-medium"
+                                onchange="applyIngresosFilters()">
                                 <option value="all">Miembro: Todos</option>
                             </select>
-                            <select id="filter-source-ingresos"
-                                class="h-9 px-3 rounded-lg border border-border-light dark:border-border-dark bg-surface-light dark:bg-[#282e39] text-sm font-medium">
-                                <option value="all">Fuente: Todas</option>
+                            <select id="filter-month-ingresos"
+                                class="h-9 px-3 rounded-lg border border-border-light dark:border-border-dark bg-surface-light dark:bg-[#282e39] text-sm font-medium"
+                                onchange="applyIngresosFilters()">
+                                <option value="all">Mes: Todos</option>
+                            </select>
+                            <select id="filter-year-ingresos"
+                                class="h-9 px-3 rounded-lg border border-border-light dark:border-border-dark bg-surface-light dark:bg-[#282e39] text-sm font-medium"
+                                onchange="applyIngresosFilters()">
+                                <option value="all">Año: Todos</option>
+                            </select>
+                            <select id="filter-bank-ingresos"
+                                class="h-9 px-3 rounded-lg border border-border-light dark:border-border-dark bg-surface-light dark:bg-[#282e39] text-sm font-medium"
+                                onchange="applyIngresosFilters()">
+                                <option value="all">Banco: Todos</option>
+                            </select>
+                            <select id="filter-category-ingresos"
+                                class="h-9 px-3 rounded-lg border border-border-light dark:border-border-dark bg-surface-light dark:bg-[#282e39] text-sm font-medium"
+                                onchange="applyIngresosFilters()">
+                                <option value="all">Categoría: Todas</option>
                             </select>
                         </div>
-                        <div class="flex items-center gap-2">
-                            <span class="text-slate-500 text-xs font-medium uppercase tracking-wider">Orden:
-                                Recientes</span>
-                            <span
-                                class="material-symbols-outlined text-slate-500 text-[20px] cursor-pointer hover:text-white">sort</span>
-                        </div>
+                        <button class="text-primary text-sm font-bold hover:underline"
+                            onclick="clearIngresosFilters()">Limpiar Filtros</button>
                     </div>
                     <!-- Data Table -->
                     <div class="overflow-x-auto">
