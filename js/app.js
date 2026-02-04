@@ -860,7 +860,11 @@ async function handleFile(file) {
                 // Use parseDateString to handle DD/MM/YYYY format correctly
                 const parsedDate = parseDateString(fecha);
                 if (!isNaN(parsedDate)) {
-                    fecha = parsedDate.toISOString().split('T')[0];
+                    // Format manually as YYYY-MM-DD using local time to avoid timezone shifts
+                    const y = parsedDate.getFullYear();
+                    const m = String(parsedDate.getMonth() + 1).padStart(2, '0');
+                    const d = String(parsedDate.getDate()).padStart(2, '0');
+                    fecha = `${y}-${m}-${d}`;
                 }
             }
 
@@ -978,7 +982,13 @@ function parseDateString(dateStr) {
     // If it's already a Date object
     if (dateStr instanceof Date) return dateStr;
 
-    // If it's in ISO format (YYYY-MM-DD or includes T), parse directly
+    // If it's specifically YYYY-MM-DD (no time), parse as local date to prevent timezone shift
+    if (dateStr.length === 10 && dateStr.charAt(4) === '-' && dateStr.charAt(7) === '-') {
+        const [y, m, d] = dateStr.split('-').map(Number);
+        return new Date(y, m - 1, d);
+    }
+
+    // Other ISO formats (with time) can fall back to standard constructor
     if (dateStr.includes('T') || (dateStr.includes('-') && dateStr.indexOf('-') === 4)) {
         return new Date(dateStr);
     }
