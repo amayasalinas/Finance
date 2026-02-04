@@ -901,6 +901,14 @@ async function handleFile(file) {
 
             valor = Math.abs(rawValue);
 
+            // Normalize Income types
+            if (tipo) {
+                const lower = String(tipo).toLowerCase();
+                if (lower.includes('abono') || lower.includes('crédito') || lower.includes('credito') || lower.includes('entrada') || lower.includes('recibida') || lower.includes('recaudo')) {
+                    tipo = 'Depósito';
+                }
+            }
+
             // Only add if we have a valid date and value
             if (fecha && valor > 0) {
                 newTransactions.push({
