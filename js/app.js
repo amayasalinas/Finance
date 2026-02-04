@@ -857,8 +857,8 @@ async function handleFile(file) {
                 const date = XLSX.SSF.parse_date_code(fecha);
                 fecha = `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')}`;
             } else if (fecha) {
-                // Try to parse as date string
-                const parsedDate = new Date(fecha);
+                // Use parseDateString to handle DD/MM/YYYY format correctly
+                const parsedDate = parseDateString(fecha);
                 if (!isNaN(parsedDate)) {
                     fecha = parsedDate.toISOString().split('T')[0];
                 }
