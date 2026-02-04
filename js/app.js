@@ -299,10 +299,10 @@ function renderIncomeVsExpensesChart() {
         }
         const value = Math.abs(parseFloat(t.Valor) || 0);
         // Income types (must match renderKPIs and table logic)
+        // Note: 'Abono' removed as TC payments are not income
         const isIncome = t.Tipo === 'Depósito' ||
             t.Tipo === 'Transferencia Recibida' ||
             t.Tipo === 'Ingreso' ||
-            t.Tipo === 'Abono' ||
             t.Tipo === 'Sueldo' ||
             t.Tipo === 'Salario';
 
