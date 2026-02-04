@@ -550,24 +550,31 @@ function renderGastosTable() {
     const start = (pagination.gastos.page - 1) * pagination.gastos.perPage;
     const pageData = gastos.slice(start, start + pagination.gastos.perPage);
 
-    tbody.innerHTML = pageData.map(t => {
+    tbody.innerHTML = pageData.map((t, pageIndex) => {
         const catColors = CONFIG.CATEGORY_COLORS[t.Categoria] || CONFIG.CATEGORY_COLORS['Otros'];
-        const member = CONFIG.FAMILY_MEMBERS[0]; // Default for demo
+        // Buscar miembro real de la transacción
+        const memberData = CONFIG.FAMILY_MEMBERS.find(m => m.id === t.Miembro) ||
+            { id: t.Miembro || 'N/A', name: t.Miembro || 'N/A', initials: (t.Miembro || '?')[0].toUpperCase(), color: 'bg-gray-500' };
+        // Calcular índice global en allTransactions
+        const globalIndex = allTransactions.findIndex(tx =>
+            tx.Fecha === t.Fecha && tx.Valor === t.Valor && tx.Detalle === t.Detalle
+        );
 
         return `
             <tr class="hover:bg-slate-50 dark:hover:bg-[#1f2633] transition-colors">
                 <td class="px-6 py-4 whitespace-nowrap">${formatDate(t.Fecha)}</td>
                 <td class="px-6 py-4 whitespace-nowrap">
                     <div class="flex items-center gap-2">
-                        <div class="size-6 rounded-full ${member.color} flex items-center justify-center text-[10px] font-bold text-white">${member.initials}</div>
-                        <span>${member.name}</span>
+                        <div class="size-6 rounded-full ${memberData.color} flex items-center justify-center text-[10px] font-bold text-white">${memberData.initials}</div>
+                        <span>${memberData.name}</span>
                     </div>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap font-medium">${t.Detalle || t.Tipo}</td>
                 <td class="px-6 py-4 whitespace-nowrap">
-                    <span class="inline-flex items-center rounded-full ${catColors.bg} px-2.5 py-0.5 text-xs font-medium ${catColors.text}">
+                    <button onclick="openEditCategoryModal(${globalIndex})" class="group inline-flex items-center gap-1 rounded-full ${catColors.bg} px-2.5 py-0.5 text-xs font-medium ${catColors.text} hover:ring-2 hover:ring-primary/50 transition-all">
                         ${t.Categoria || 'Otros'}
-                    </span>
+                        <span class="material-symbols-outlined text-sm opacity-0 group-hover:opacity-100 transition-opacity">edit</span>
+                    </button>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-slate-500">
                     <div class="flex items-center gap-2">
@@ -610,23 +617,30 @@ function renderIngresosTable() {
     const start = (pagination.ingresos.page - 1) * pagination.ingresos.perPage;
     const pageData = ingresos.slice(start, start + pagination.ingresos.perPage);
 
-    tbody.innerHTML = pageData.map(t => {
+    tbody.innerHTML = pageData.map((t, pageIndex) => {
         const sourceColors = CONFIG.CATEGORY_COLORS[t.Categoria] || CONFIG.CATEGORY_COLORS['Sueldo'];
-        const member = CONFIG.FAMILY_MEMBERS[Math.floor(Math.random() * 2)]; // Random for demo
+        // Buscar miembro real de la transacción
+        const memberData = CONFIG.FAMILY_MEMBERS.find(m => m.id === t.Miembro) ||
+            { id: t.Miembro || 'N/A', name: t.Miembro || 'N/A', initials: (t.Miembro || '?')[0].toUpperCase(), color: 'bg-gray-500' };
+        // Calcular índice global en allTransactions
+        const globalIndex = allTransactions.findIndex(tx =>
+            tx.Fecha === t.Fecha && tx.Valor === t.Valor && tx.Detalle === t.Detalle
+        );
 
         return `
             <tr class="hover:bg-gray-50 dark:hover:bg-[#232936] transition-colors">
                 <td class="py-4 px-6 text-sm font-medium whitespace-nowrap">${formatDate(t.Fecha)}</td>
                 <td class="py-4 px-6">
                     <div class="flex items-center gap-3">
-                        <div class="size-8 rounded-full ${member.color} flex items-center justify-center text-xs font-bold text-white">${member.initials}</div>
-                        <div class="text-sm font-medium">${member.name}</div>
+                        <div class="size-8 rounded-full ${memberData.color} flex items-center justify-center text-xs font-bold text-white">${memberData.initials}</div>
+                        <div class="text-sm font-medium">${memberData.name}</div>
                     </div>
                 </td>
                 <td class="py-4 px-6">
-                    <span class="inline-flex items-center rounded-full ${sourceColors.bg} px-2.5 py-0.5 text-xs font-medium ${sourceColors.text}">
+                    <button onclick="openEditCategoryModal(${globalIndex})" class="group inline-flex items-center gap-1 rounded-full ${sourceColors.bg} px-2.5 py-0.5 text-xs font-medium ${sourceColors.text} hover:ring-2 hover:ring-primary/50 transition-all">
                         ${t.Categoria || t.Tipo}
-                    </span>
+                        <span class="material-symbols-outlined text-sm opacity-0 group-hover:opacity-100 transition-opacity">edit</span>
+                    </button>
                 </td>
                 <td class="py-4 px-6 text-sm text-slate-500">${t.Banco || '--'} ${t.Producto ? '••••' + t.Producto.slice(-4) : ''}</td>
                 <td class="py-4 px-6 text-right">
@@ -766,7 +780,7 @@ async function handleFile(file) {
     const member = document.getElementById('upload-member')?.value;
 
     if (!member) {
-        alert('Por favor selecciona un miembro de la familia');
+        showNotification('Por favor selecciona un miembro de la familia', 'warning');
         return;
     }
 
@@ -880,12 +894,12 @@ async function handleFile(file) {
         // Update history to success with banks info
         const banksStr = Array.from(banksFound).join(', ') || 'N/A';
         addUploadHistory(file.name, banksStr, member, 'success');
-        alert(`✅ Se cargaron ${newTransactions.length} transacciones desde "${file.name}"\nBancos: ${banksStr}`);
+        showNotification(`Se cargaron ${newTransactions.length} transacciones de ${banksStr}`, 'success');
 
     } catch (error) {
         console.error('Error processing file:', error);
         addUploadHistory(file.name, 'Error', member, 'error');
-        alert(`❌ Error al procesar el archivo: ${error.message}`);
+        showNotification(`Error al procesar archivo: ${error.message}`, 'error');
     }
 }
 
@@ -972,6 +986,147 @@ function debounce(func, wait) {
         clearTimeout(timeout);
         timeout = setTimeout(later, wait);
     };
+}
+// =========================================
+// TOAST NOTIFICATIONS
+// =========================================
+function showNotification(message, type = 'success') {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+
+    const icons = {
+        success: 'check_circle',
+        error: 'error',
+        warning: 'warning',
+        info: 'info'
+    };
+    const colors = {
+        success: 'bg-green-500',
+        error: 'bg-red-500',
+        warning: 'bg-yellow-500',
+        info: 'bg-blue-500'
+    };
+
+    const toast = document.createElement('div');
+    toast.className = `pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-xl ${colors[type]} text-white shadow-lg transform translate-x-full opacity-0 transition-all duration-300`;
+    toast.innerHTML = `
+        <span class="material-symbols-outlined">${icons[type]}</span>
+        <span class="text-sm font-medium">${message}</span>
+        <button onclick="this.parentElement.remove()" class="ml-2 hover:bg-white/20 rounded-full p-1 transition-colors">
+            <span class="material-symbols-outlined text-sm">close</span>
+        </button>
+    `;
+
+    container.appendChild(toast);
+
+    // Animate in
+    requestAnimationFrame(() => {
+        toast.classList.remove('translate-x-full', 'opacity-0');
+    });
+
+    // Auto remove after 5 seconds
+    setTimeout(() => {
+        toast.classList.add('translate-x-full', 'opacity-0');
+        setTimeout(() => toast.remove(), 300);
+    }, 5000);
+}
+
+// =========================================
+// EDIT CATEGORY MODAL
+// =========================================
+function openEditCategoryModal(transactionIndex) {
+    const modal = document.getElementById('modal-edit-category');
+    const transaction = allTransactions[transactionIndex];
+
+    if (!modal || !transaction) {
+        console.error('No se pudo abrir modal', { transactionIndex, transaction });
+        return;
+    }
+
+    // Set hidden index
+    document.getElementById('edit-transaction-index').value = transactionIndex;
+
+    // Set transaction info
+    document.getElementById('edit-transaction-detail').textContent = transaction.Detalle || transaction.Tipo || 'Sin detalle';
+    document.getElementById('edit-transaction-valor').textContent = formatCurrency(Math.abs(parseFloat(transaction.Valor) || 0));
+
+    // Set current category in select
+    const select = document.getElementById('edit-category-select');
+    const currentCategory = transaction.Categoria || '';
+
+    // Check if current category exists in options
+    const optionExists = Array.from(select.options).some(opt => opt.value === currentCategory);
+    if (optionExists) {
+        select.value = currentCategory;
+    } else if (currentCategory) {
+        // Add as custom option
+        const customOption = document.createElement('option');
+        customOption.value = currentCategory;
+        customOption.textContent = currentCategory;
+        select.insertBefore(customOption, select.querySelector('option[value="__nueva__"]'));
+        select.value = currentCategory;
+    }
+
+    // Reset new category input
+    document.getElementById('new-category-container').classList.add('hidden');
+    document.getElementById('new-category-input').value = '';
+
+    // Show modal
+    modal.classList.remove('hidden');
+}
+
+function closeEditCategoryModal() {
+    const modal = document.getElementById('modal-edit-category');
+    if (modal) {
+        modal.classList.add('hidden');
+    }
+}
+
+function onCategorySelectChange() {
+    const select = document.getElementById('edit-category-select');
+    const newCategoryContainer = document.getElementById('new-category-container');
+
+    if (select.value === '__nueva__') {
+        newCategoryContainer.classList.remove('hidden');
+        document.getElementById('new-category-input').focus();
+    } else {
+        newCategoryContainer.classList.add('hidden');
+    }
+}
+
+function saveEditCategory() {
+    const indexStr = document.getElementById('edit-transaction-index').value;
+    const index = parseInt(indexStr, 10);
+    const select = document.getElementById('edit-category-select');
+    const newCategoryInput = document.getElementById('new-category-input');
+
+    let newCategory = select.value;
+
+    // If new category option selected, use the input value
+    if (newCategory === '__nueva__') {
+        newCategory = newCategoryInput.value.trim();
+        if (!newCategory) {
+            showNotification('Por favor ingresa una categoría', 'warning');
+            return;
+        }
+    }
+
+    if (!newCategory) {
+        showNotification('Por favor selecciona una categoría', 'warning');
+        return;
+    }
+
+    // Update transaction
+    if (allTransactions[index]) {
+        allTransactions[index].Categoria = newCategory;
+        saveTransactions();
+        applyFilters();
+        renderAll();
+        closeEditCategoryModal();
+        showNotification(`Categoría actualizada a "${newCategory}"`, 'success');
+    } else {
+        showNotification('Error al actualizar la categoría', 'error');
+    }
 }
 
 // =========================================

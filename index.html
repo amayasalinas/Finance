@@ -769,6 +769,73 @@
         </main>
     </div>
 
+    <!-- ==================== MODAL EDITAR CATEGORÍA ==================== -->
+    <div id="modal-edit-category" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="closeEditCategoryModal()"></div>
+        <div class="absolute inset-0 flex items-center justify-center p-4">
+            <div
+                class="relative w-full max-w-md bg-white dark:bg-[#1e2736] rounded-xl shadow-2xl ring-1 ring-gray-900/5 dark:ring-white/10">
+                <div class="flex items-center justify-between p-5 border-b border-border-light dark:border-border-dark">
+                    <h3 class="text-lg font-bold">Editar Categoría</h3>
+                    <button onclick="closeEditCategoryModal()"
+                        class="text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors">
+                        <span class="material-symbols-outlined">close</span>
+                    </button>
+                </div>
+                <div class="p-5 space-y-4">
+                    <input type="hidden" id="edit-transaction-index" value="" />
+                    <div class="text-sm text-slate-500 dark:text-slate-400">
+                        <p><strong>Transacción:</strong> <span id="edit-transaction-detail"></span></p>
+                        <p><strong>Valor:</strong> <span id="edit-transaction-valor"></span></p>
+                    </div>
+                    <label class="flex flex-col gap-2">
+                        <span class="text-sm font-semibold">Seleccionar Categoría</span>
+                        <select id="edit-category-select"
+                            class="w-full rounded-lg border border-border-light dark:border-border-dark bg-surface-light dark:bg-[#1c1f27] h-12 px-4 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
+                            onchange="onCategorySelectChange()">
+                            <option value="">-- Seleccionar --</option>
+                            <option value="Hogar">Hogar</option>
+                            <option value="Transporte">Transporte</option>
+                            <option value="Alimentación">Alimentación</option>
+                            <option value="Entretenimiento">Entretenimiento</option>
+                            <option value="Salud">Salud</option>
+                            <option value="Servicios">Servicios</option>
+                            <option value="Compras">Compras</option>
+                            <option value="Suscripciones">Suscripciones</option>
+                            <option value="Educación">Educación</option>
+                            <option value="Sueldo">Sueldo</option>
+                            <option value="Freelance">Freelance</option>
+                            <option value="Inversión">Inversión</option>
+                            <option value="Regalo">Regalo</option>
+                            <option value="Otros">Otros</option>
+                            <option value="__nueva__">+ Nueva Categoría...</option>
+                        </select>
+                    </label>
+                    <div id="new-category-container" class="hidden">
+                        <label class="flex flex-col gap-2">
+                            <span class="text-sm font-semibold">Nueva Categoría</span>
+                            <input type="text" id="new-category-input" placeholder="Escribir nueva categoría..."
+                                class="w-full rounded-lg border border-border-light dark:border-border-dark bg-surface-light dark:bg-[#1c1f27] h-12 px-4 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all" />
+                        </label>
+                    </div>
+                </div>
+                <div class="flex gap-3 p-5 border-t border-border-light dark:border-border-dark">
+                    <button onclick="closeEditCategoryModal()"
+                        class="flex-1 h-11 rounded-lg border border-border-light dark:border-border-dark text-slate-600 dark:text-slate-300 font-medium hover:bg-slate-100 dark:hover:bg-[#2a3241] transition-colors">
+                        Cancelar
+                    </button>
+                    <button onclick="saveEditCategory()"
+                        class="flex-1 h-11 rounded-lg bg-primary hover:bg-primary-dark text-white font-medium transition-colors">
+                        Guardar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== TOAST NOTIFICATIONS ==================== -->
+    <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col gap-3 pointer-events-none"></div>
+
     <!-- SheetJS for Excel parsing -->
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
 
