@@ -527,8 +527,16 @@
                             onchange="applyGastosFilters()">
                             <option value="all">Categoría: Todas</option>
                         </select>
-                        <button id="clear-filters-gastos" class="ml-auto text-primary text-sm font-bold hover:underline"
-                            onclick="clearGastosFilters()">Limpiar Filtros</button>
+                        <div class="ml-auto flex items-center gap-3">
+                            <div
+                                class="hidden sm:flex items-center gap-2 px-3 py-1 bg-white dark:bg-[#1c212b] rounded-lg border border-border-light dark:border-border-dark shadow-sm">
+                                <span class="text-xs font-medium text-slate-500">Total:</span>
+                                <span id="gastos-filtered-total"
+                                    class="text-sm font-bold text-slate-900 dark:text-white">$0</span>
+                            </div>
+                            <button id="clear-filters-gastos" class="text-primary text-sm font-bold hover:underline"
+                                onclick="clearGastosFilters()">Limpiar Filtros</button>
+                        </div>
                     </div>
                 </div>
 
@@ -667,7 +675,7 @@
                             <select id="filter-category-ingresos"
                                 class="h-9 px-3 rounded-lg border border-border-light dark:border-border-dark bg-surface-light dark:bg-[#282e39] text-sm font-medium"
                                 onchange="applyIngresosFilters()">
-                                <option value="all">Categoría: Todas</option>
+                                <option value="all">Fuente: Todas</option>
                             </select>
                         </div>
                         <button class="text-primary text-sm font-bold hover:underline"

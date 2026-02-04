@@ -546,6 +546,13 @@ function renderGastosTable() {
     // Apply advanced filters
     gastos = filterByAdvancedCriteria(gastos, filters);
 
+    // Calculate total for filtered expenses
+    const totalFiltered = gastos.reduce((sum, t) => sum + (parseFloat(t.Valor) || 0), 0);
+    const totalElement = document.getElementById('gastos-filtered-total');
+    if (totalElement) {
+        totalElement.textContent = formatCurrency(totalFiltered);
+    }
+
     // Sort by date descending
     gastos.sort((a, b) => parseDateString(b.Fecha) - parseDateString(a.Fecha));
 
@@ -1075,7 +1082,7 @@ function populateAdvancedFilters() {
     populateSelect('filter-month-ingresos', months.map(m => ({ value: m, label: MONTHS_ES[m] })), 'Mes: Todos');
     populateSelect('filter-year-ingresos', years.map(y => ({ value: y, label: y })), 'Año: Todos');
     populateSelect('filter-bank-ingresos', banks.map(b => ({ value: b, label: b })), 'Banco: Todos');
-    populateSelect('filter-category-ingresos', categories.map(c => ({ value: c, label: c })), 'Categoría: Todas');
+    populateSelect('filter-category-ingresos', categories.map(c => ({ value: c, label: c })), 'Fuente: Todas');
 
     // Populate Resumen filters
     populateSelect('filter-month-resumen', months.map(m => ({ value: m, label: MONTHS_ES[m] })), 'Mes: Todos');
