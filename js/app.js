@@ -547,7 +547,7 @@ function renderGastosTable() {
     gastos = filterByAdvancedCriteria(gastos, filters);
 
     // Sort by date descending
-    gastos.sort((a, b) => new Date(b.Fecha) - new Date(a.Fecha));
+    gastos.sort((a, b) => parseDateString(b.Fecha) - parseDateString(a.Fecha));
 
     // Pagination
     pagination.gastos.total = gastos.length;
@@ -621,7 +621,7 @@ function renderIngresosTable() {
     ingresos = filterByAdvancedCriteria(ingresos, filters);
 
     // Sort by date descending
-    ingresos.sort((a, b) => new Date(b.Fecha) - new Date(a.Fecha));
+    ingresos.sort((a, b) => parseDateString(b.Fecha) - parseDateString(a.Fecha));
 
     // Pagination
     pagination.ingresos.total = ingresos.length;
@@ -971,8 +971,50 @@ function formatCurrencyShort(value) {
     return formatCurrency(value);
 }
 
+// Parse date string handling DD/MM/YYYY format
+function parseDateString(dateStr) {
+    if (!dateStr) return new Date();
+
+    // If it's already a Date object
+    if (dateStr instanceof Date) return dateStr;
+
+    // If it's in ISO format (YYYY-MM-DD or includes T), parse directly
+    if (dateStr.includes('T') || (dateStr.includes('-') && dateStr.indexOf('-') === 4)) {
+        return new Date(dateStr);
+    }
+
+    // Handle DD/MM/YYYY or DD-MM-YYYY format
+    const separator = dateStr.includes('/') ? '/' : '-';
+    const parts = dateStr.split(separator);
+
+    if (parts.length === 3) {
+        const first = parseInt(parts[0], 10);
+        const second = parseInt(parts[1], 10);
+        const third = parseInt(parts[2], 10);
+
+        // If first part > 12, assume DD/MM/YYYY (Spanish format)
+        // If first part has 4 digits, assume YYYY/MM/DD
+        if (parts[0].length === 4) {
+            // YYYY/MM/DD format
+            return new Date(first, second - 1, third);
+        } else if (first > 12) {
+            // DD/MM/YYYY format (Spanish)
+            return new Date(third, second - 1, first);
+        } else if (second > 12) {
+            // MM/DD/YYYY format (American)
+            return new Date(third, first - 1, second);
+        } else {
+            // Ambiguous - assume DD/MM/YYYY (Spanish format for Colombian context)
+            return new Date(third, second - 1, first);
+        }
+    }
+
+    // Fallback to default parsing
+    return new Date(dateStr);
+}
+
 function formatDate(dateStr) {
-    const date = new Date(dateStr);
+    const date = parseDateString(dateStr);
     return date.toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
@@ -1006,8 +1048,8 @@ const MONTHS_ES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
 
 function populateAdvancedFilters() {
     // Extract unique values from all transactions
-    const years = [...new Set(allTransactions.map(t => new Date(t.Fecha).getFullYear()).filter(y => !isNaN(y)))].sort((a, b) => b - a);
-    const months = [...new Set(allTransactions.map(t => new Date(t.Fecha).getMonth()).filter(m => !isNaN(m)))].sort((a, b) => a - b);
+    const years = [...new Set(allTransactions.map(t => parseDateString(t.Fecha).getFullYear()).filter(y => !isNaN(y)))].sort((a, b) => b - a);
+    const months = [...new Set(allTransactions.map(t => parseDateString(t.Fecha).getMonth()).filter(m => !isNaN(m)))].sort((a, b) => a - b);
     const banks = [...new Set(allTransactions.map(t => t.Banco).filter(b => b && b !== '--'))];
     const categories = [...new Set(allTransactions.map(t => t.Categoria).filter(c => c))];
 
@@ -1036,7 +1078,7 @@ function applyResumenFilters() {
 
     // Filter transactions based on selected month and year
     filteredTransactions = allTransactions.filter(t => {
-        const date = new Date(t.Fecha);
+        const date = parseDateString(t.Fecha);
 
         // Month filter
         if (monthFilter !== 'all' && date.getMonth() !== parseInt(monthFilter)) return false;
@@ -1119,7 +1161,7 @@ function getIngresosFilterValues() {
 
 function filterByAdvancedCriteria(transactions, filters) {
     return transactions.filter(t => {
-        const date = new Date(t.Fecha);
+        const date = parseDateString(t.Fecha);
 
         // Member filter
         if (filters.member !== 'all' && t.Miembro !== filters.member) return false;
