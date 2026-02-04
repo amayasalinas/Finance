@@ -235,10 +235,10 @@ function renderKPIs() {
         t.Tipo === 'Compra' || t.Tipo === 'Retiro' || t.Tipo === 'Débito' ||
         t.Tipo === 'Gasto' || t.Tipo === 'Pago' || t.Tipo === 'Cargo'
     );
-    // Include all common income types
+    // Include all common income types (Abono excluded - TC payments are not income)
     const ingresos = filteredTransactions.filter(t =>
         t.Tipo === 'Depósito' || t.Tipo === 'Transferencia Recibida' ||
-        t.Tipo === 'Ingreso' || t.Tipo === 'Abono' || t.Tipo === 'Sueldo' || t.Tipo === 'Salario'
+        t.Tipo === 'Ingreso' || t.Tipo === 'Sueldo' || t.Tipo === 'Salario'
     );
 
     const totalGastos = gastos.reduce((sum, t) => sum + (parseFloat(t.Valor) || 0), 0);
@@ -705,10 +705,10 @@ function renderIngresosTable() {
     // Get all filter values
     const filters = getIngresosFilterValues();
 
-    // Start with income-type transactions from all
+    // Start with income-type transactions from all (Abono excluded - TC payments are not income)
     let ingresos = allTransactions.filter(t =>
         t.Tipo === 'Depósito' || t.Tipo === 'Transferencia Recibida' ||
-        t.Tipo === 'Ingreso' || t.Tipo === 'Abono' || t.Tipo === 'Sueldo' || t.Tipo === 'Salario'
+        t.Tipo === 'Ingreso' || t.Tipo === 'Sueldo' || t.Tipo === 'Salario'
     );
 
     // Apply advanced filters
