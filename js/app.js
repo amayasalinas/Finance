@@ -1322,7 +1322,7 @@ async function handleFile(file) {
             // Parse date (handle Excel serial dates)
             if (typeof fecha === 'number') {
                 const date = XLSX.SSF.parse_date_code(fecha);
-                fecha = `${date.y} -${String(date.m).padStart(2, '0')} -${String(date.d).padStart(2, '0')} `;
+                fecha = `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')}`;
             } else if (fecha) {
                 // Use parseDateString to handle DD/MM/YYYY format correctly
                 const parsedDate = parseDateString(fecha);
