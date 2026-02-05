@@ -1331,7 +1331,7 @@ async function handleFile(file) {
                     const y = parsedDate.getFullYear();
                     const m = String(parsedDate.getMonth() + 1).padStart(2, '0');
                     const d = String(parsedDate.getDate()).padStart(2, '0');
-                    fecha = `${y} -${m} -${d} `;
+                    fecha = `${y}-${m}-${d}`;
                 }
             }
 
