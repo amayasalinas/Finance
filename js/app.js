@@ -271,7 +271,7 @@ function navigateTo(view) {
     // Show/hide sections
     const sections = document.querySelectorAll('section.view-section');
     sections.forEach(section => {
-        if (section.id === `section - ${view} `) {
+        if (section.id === `section-${view}`) {
             section.classList.add('active');
         } else {
             section.classList.remove('active');
