@@ -109,7 +109,7 @@ function addMemberInput() {
     const div = document.createElement('div');
     div.className = 'flex gap-2';
     div.innerHTML = `
-    < input type = "text" placeholder = "Nombre" class="flex-1 rounded-lg border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-[#111827] text-sm" >
+    <input type = "text" placeholder = "Nombre" class="flex-1 rounded-lg border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-[#111827] text-sm">
         <select class="rounded-lg border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-[#111827] text-sm">
             <option value="bg-blue-500">Azul</option>
             <option value="bg-purple-500">Morado</option>
@@ -768,13 +768,13 @@ function renderCategoryDonut() {
     const legendContainer = document.getElementById('category-legend');
     if (legendContainer) {
         legendContainer.innerHTML = sorted.map(([cat, val], i) => `
-    < div class="flex items-center justify-between gap-2" >
+    <div class="flex items-center justify-between gap-2">
                 <div class="flex items-center gap-2">
                     <span class="size-3 rounded-full" style="background: ${colors[i]}"></span>
                     <span class="text-sm font-medium">${cat}</span>
                 </div>
                 <span class="text-sm text-slate-500 dark:text-slate-400">${formatCurrency(val)}</span>
-            </div >
+            </div>
     `).join('');
     }
 }
@@ -796,7 +796,7 @@ function renderRecentTransactions() {
         const prefix = isExpense ? '-' : '+';
 
         return `
-    < div class="flex items-center justify-between py-2" >
+    <div class="flex items-center justify-between py-2">
                 <div class="flex items-center gap-3">
                     <div class="flex items-center justify-center size-10 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500">
                         <span class="material-symbols-outlined text-[20px]">${icon}</span>
@@ -807,7 +807,7 @@ function renderRecentTransactions() {
                     </div>
                 </div>
                 <span class="text-sm font-bold ${valueClass}">${prefix}${formatCurrency(Math.abs(value))}</span>
-            </div >
+            </div>
     `;
     }).join('');
 }
@@ -845,7 +845,7 @@ function renderFamilyIncome() {
     container.innerHTML = familyData.map(({ member, income, goal }) => {
         const progress = Math.min((income / goal) * 100, 100);
         return `
-    < div class="p-4 rounded-xl bg-slate-50 dark:bg-[#1c2333] border border-slate-100 dark:border-slate-800" >
+    <div class="p-4 rounded-xl bg-slate-50 dark:bg-[#1c2333] border border-slate-100 dark:border-slate-800">
                 <div class="flex items-center justify-between mb-3">
                     <div class="flex items-center gap-3">
                         <div class="flex items-center justify-center size-10 rounded-full ${member.color} text-white font-bold text-sm">
@@ -861,7 +861,7 @@ function renderFamilyIncome() {
                 <div class="h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
                     <div class="h-full bg-primary rounded-full transition-all" style="width: ${progress}%"></div>
                 </div>
-            </div >
+            </div>
     `;
     }).join('');
 }
@@ -900,7 +900,7 @@ function renderAccounts() {
     }
 
     container.innerHTML = banks.map(([bank, balance]) => `
-    < div class="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-[#1c2333] hover:bg-slate-100 dark:hover:bg-[#232b3b] transition-colors cursor-pointer" >
+    <div class="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-[#1c2333] hover:bg-slate-100 dark:hover:bg-[#232b3b] transition-colors cursor-pointer">
             <div class="flex items-center gap-3">
                 <div class="flex items-center justify-center size-10 rounded-lg bg-primary/10 text-primary">
                     <span class="material-symbols-outlined">account_balance</span>
@@ -911,7 +911,7 @@ function renderAccounts() {
                 </div>
             </div>
             <span class="font-bold ${balance >= 0 ? 'text-secondary' : 'text-danger'}">${formatCurrency(balance)}</span>
-        </div >
+        </div>
     `).join('');
 }
 
@@ -978,7 +978,7 @@ function renderGastosTable() {
         );
 
         return `
-    < tr class="hover:bg-slate-50 dark:hover:bg-[#1f2633] transition-colors" >
+    <tr class="hover:bg-slate-50 dark:hover:bg-[#1f2633] transition-colors">
                 <td class="px-6 py-4 whitespace-nowrap">${formatDate(t.Fecha)}</td>
                 <td class="px-6 py-4 whitespace-nowrap">
                     <div class="flex items-center gap-2">
@@ -1000,7 +1000,7 @@ function renderGastosTable() {
                     </div>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-right font-bold text-danger">-${formatCurrency(Math.abs(parseFloat(t.Valor) || 0))}</td>
-            </tr >
+            </tr>
     `;
     }).join('');
 
@@ -1072,7 +1072,7 @@ function renderIngresosTable() {
         );
 
         return `
-    < tr class="hover:bg-gray-50 dark:hover:bg-[#232936] transition-colors" >
+    <tr class="hover:bg-gray-50 dark:hover:bg-[#232936] transition-colors">
                 <td class="py-4 px-6 text-sm font-medium whitespace-nowrap">${formatDate(t.Fecha)}</td>
                 <td class="py-4 px-6">
                     <div class="flex items-center gap-3">
@@ -1090,7 +1090,7 @@ function renderIngresosTable() {
                 <td class="py-4 px-6 text-right">
                     <span class="text-secondary font-bold text-sm">+${formatCurrency(Math.abs(parseFloat(t.Valor) || 0))}</span>
                 </td>
-            </tr >
+            </tr>
     `;
     }).join('');
 
@@ -1114,9 +1114,9 @@ async function fetchAIRecommendations() {
     if (!container) return;
 
     container.innerHTML = `
-    < div class="p-4 rounded-xl bg-gradient-to-br from-slate-50 to-blue-50/50 dark:from-slate-800/50 dark:to-blue-900/20 border border-slate-100 dark:border-slate-800" >
+    <div class="p-4 rounded-xl bg-gradient-to-br from-slate-50 to-blue-50/50 dark:from-slate-800/50 dark:to-blue-900/20 border border-slate-100 dark:border-slate-800">
         <p class="text-sm text-slate-500 dark:text-slate-400 animate-pulse">✨ Analizando tus finanzas...</p>
-        </div >
+        </div>
     `;
 
     // Calculate summary data
@@ -1191,9 +1191,9 @@ Responde en español, con emojis, formato: "1. [emoji] [consejo corto]" para cad
 
             const recommendations = text.split('\n').filter(line => line.trim().match(/^\d\./));
             container.innerHTML = recommendations.map(rec => `
-    < div class="p-4 rounded-xl bg-gradient-to-br from-slate-50 to-blue-50/50 dark:from-slate-800/50 dark:to-blue-900/20 border border-slate-100 dark:border-slate-800" >
+    <div class="p-4 rounded-xl bg-gradient-to-br from-slate-50 to-blue-50/50 dark:from-slate-800/50 dark:to-blue-900/20 border border-slate-100 dark:border-slate-800">
         <p class="text-sm">${rec.replace(/^\d\.\s*/, '')}</p>
-                </div >
+                </div>
     `).join('');
         } else {
             throw new Error('API error');
@@ -1201,9 +1201,9 @@ Responde en español, con emojis, formato: "1. [emoji] [consejo corto]" para cad
     } catch (error) {
         console.error('AI Recommendations error:', error);
         container.innerHTML = `
-    < div class="p-4 rounded-xl bg-gradient-to-br from-slate-50 to-blue-50/50 dark:from-slate-800/50 dark:to-blue-900/20 border border-slate-100 dark:border-slate-800" >
+    <div class="p-4 rounded-xl bg-gradient-to-br from-slate-50 to-blue-50/50 dark:from-slate-800/50 dark:to-blue-900/20 border border-slate-100 dark:border-slate-800">
         <p class="text-sm">💡 Mantén un ahorro del 20% de tus ingresos mensuales.</p>
-            </div >
+            </div>
     <div class="p-4 rounded-xl bg-gradient-to-br from-slate-50 to-blue-50/50 dark:from-slate-800/50 dark:to-blue-900/20 border border-slate-100 dark:border-slate-800">
         <p class="text-sm">📊 Revisa tus gastos por categoría para identificar oportunidades.</p>
     </div>
@@ -1439,7 +1439,7 @@ function addUploadHistory(filename, bank, memberId, status) {
     const memberData = currentFamilyMembers.find(m => m.id === memberId) || { id: memberId, name: 'Desconocido', initials: (memberId || '?')[0].toUpperCase(), color: 'bg-gray-500' };
 
     const row = `
-    < tr class="hover:bg-slate-50 dark:hover:bg-[#1c2333]/50 transition-colors" >
+    <tr class="hover:bg-slate-50 dark:hover:bg-[#1c2333]/50 transition-colors">
             <td class="px-6 py-4">
                 <div class="flex items-center gap-3">
                     <span class="material-symbols-outlined ${status === 'success' ? 'text-green-500' : status === 'error' ? 'text-red-500' : 'text-blue-500 animate-pulse'}">${status === 'success' ? 'description' : status === 'error' ? 'error' : 'sync'}</span>
@@ -1454,7 +1454,7 @@ function addUploadHistory(filename, bank, memberId, status) {
                 </div>
             </td>
             <td class="px-6 py-4 text-right">${statusBadge[status]}</td>
-        </tr >
+        </tr>
     `;
 
     // Clear "no uploads" message if present
@@ -1629,8 +1629,8 @@ function populateSelect(selectId, options, defaultLabel) {
     const select = document.getElementById(selectId);
     if (!select) return;
 
-    select.innerHTML = `< option value = "all" > ${defaultLabel}</option > ` +
-        options.map(opt => `< option value = "${opt.value}" > ${opt.label}</option > `).join('');
+    select.innerHTML = `<option value = "all"> ${defaultLabel}</option> ` +
+        options.map(opt => `<option value = "${opt.value}"> ${opt.label}</option> `).join('');
 }
 
 function applyGastosFilters() {
@@ -1726,7 +1726,7 @@ function initMemberFilter() {
     if (!container) return;
 
     container.innerHTML = `
-    < label class="flex items-center gap-3 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg p-2 -m-1" >
+    <label class="flex items-center gap-3 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg p-2 -m-1">
         <input type="checkbox" id="member-all" value="all" checked
             class="w-4 h-4 text-primary rounded border-slate-300 focus:ring-primary"
             onchange="onMemberFilterChange('all')">
@@ -1741,7 +1741,7 @@ function initMemberFilter() {
         const div = document.createElement('div');
         div.className = 'flex items-center justify-between p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-[#1f2633]';
         div.innerHTML = `
-    < label class="flex items-center gap-3 cursor-pointer" >
+    <label class="flex items-center gap-3 cursor-pointer">
         <input type="checkbox" id="member-${member.id}" value="${member.id}" checked
             class="w-4 h-4 text-primary rounded border-slate-300 focus:ring-primary"
             onchange="onMemberFilterChange('${member.id}')">
@@ -1867,7 +1867,7 @@ function showNotification(message, type = 'success') {
     const toast = document.createElement('div');
     toast.className = `pointer - events - auto flex items - center gap - 3 px - 4 py - 3 rounded - xl ${colors[type]} text - white shadow - lg transform translate - x - full opacity - 0 transition - all duration - 300`;
     toast.innerHTML = `
-    < span class="material-symbols-outlined" > ${icons[type]}</span >
+    <span class="material-symbols-outlined"> ${icons[type]}</span>
         <span class="text-sm font-medium">${message}</span>
         <button onclick="this.parentElement.remove()" class="ml-2 hover:bg-white/20 rounded-full p-1 transition-colors">
             <span class="material-symbols-outlined text-sm">close</span>
