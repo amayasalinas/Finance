@@ -4,10 +4,11 @@
 
 // Valid credentials for local testing
 const VALID_USERS = [
-    { username: 'familia', password: 'familia123' },
-    { username: 'admin', password: 'admin' },
-    { username: 'papa', password: 'papa123' },
-    { username: 'mama', password: 'mama123' }
+    { username: 'familia', password: 'familia123', familyId: 'default' },
+    { username: 'familiaamayapaniagua', password: 'externa123', familyId: 'external_01' },
+    { username: 'admin', password: 'admin', familyId: 'default' },
+    { username: 'papa', password: 'papa123', familyId: 'default' },
+    { username: 'mama', password: 'mama123', familyId: 'default' }
 ];
 
 // Check if user is logged in
@@ -20,6 +21,11 @@ function getCurrentUser() {
     return localStorage.getItem('currentUser') || 'Familia';
 }
 
+// Get current Family ID
+function getCurrentFamilyId() {
+    return localStorage.getItem('currentFamilyId') || 'default';
+}
+
 // Login function
 function login(username, password) {
     const user = VALID_USERS.find(u =>
@@ -30,6 +36,8 @@ function login(username, password) {
     if (user) {
         localStorage.setItem('isLoggedIn', 'true');
         localStorage.setItem('currentUser', user.username);
+        // Persist Family ID
+        localStorage.setItem('currentFamilyId', user.familyId || 'default');
         return true;
     }
     return false;
@@ -39,6 +47,7 @@ function login(username, password) {
 function logout() {
     localStorage.removeItem('isLoggedIn');
     localStorage.removeItem('currentUser');
+    localStorage.removeItem('currentFamilyId'); // Clear family scope
     showLogin();
 }
 

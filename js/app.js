@@ -2,10 +2,11 @@
 // APP - Finanzas Familiares Dashboard
 // =========================================
 
-// Global State
+// Global STATE
 let allTransactions = [];
-let filteredTransactions = [];
+let filteredTransactions = []; // For current view
 let currentView = 'resumen';
+let currentFamilyMembers = []; // Dynamic members from DB
 let charts = {};
 let selectedMembers = []; // Empty means all members selected
 let pagination = {
@@ -13,67 +14,228 @@ let pagination = {
     ingresos: { page: 1, perPage: CONFIG.ITEMS_PER_PAGE, total: 0 }
 };
 
+// Supabase Configuration
+const SUPABASE_URL = "https://iikarklhudhsfvkhhyub.supabase.co";
+const SUPABASE_KEY = "sb_publishable_PIdI08dSRTLPVauDLxX6Hg_yMEsxwU-";
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+
 // =========================================
 // INITIALIZATION
 // =========================================
-function initApp() {
-    console.log('🚀 Initializing Finanzas Familiares Dashboard');
+async function initApp() {
+    console.log('🚀 Initializing App...');
 
+    // 1. Fetch Family Members first
+    await fetchFamilyMembers();
+
+    // 2. Load Data
+    await loadData();
+
+    // 3. Setup UI
     setupNavigation();
     setupFilters();
     setupFileUpload();
-    initMemberFilter();
-    loadData();
+    initMemberFilter(); // This now uses currentFamilyMembers
+
+    // 4. Setup Realtime
+    setupRealtime();
+
+    // 5. Initial Render
+    renderAll();
 }
 
-// Load data from localStorage (primary) or JSON file (fallback)
-async function loadData() {
-    try {
-        // First, try loading from localStorage (previously uploaded data)
-        const storedData = localStorage.getItem('finanzas_transactions');
+// FAMILY MEMBERS MANAGEMENT
+// =========================================
+async function fetchFamilyMembers() {
+    const familyId = getCurrentFamilyId();
+    console.log(`Pb Fetching members for family: ${familyId} `);
 
-        if (storedData) {
-            allTransactions = JSON.parse(storedData);
-            console.log(`📊 Loaded ${allTransactions.length} transactions from localStorage`);
+    try {
+        const { data, error } = await supabase
+            .from('family_members')
+            .select('*')
+            .eq('family_id', familyId)
+        //.eq('active', true); // Optional: if you implement soft delete
+
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+            currentFamilyMembers = data;
+            console.log('✅ Members loaded:', currentFamilyMembers);
+            updateMemberDropdowns(); // Update UI dropdowns
         } else {
-            // Fallback to JSON file
-            const response = await fetch('data/movimientos.json');
-            if (response.ok) {
-                const rawData = await response.json();
-                // Normalize data keys (JSON uses lowercase, app uses PascalCase)
-                allTransactions = rawData.map(t => ({
-                    Fecha: t.fecha || t.Fecha,
-                    Tipo: t.tipo || t.Tipo,
-                    Valor: t.valor || t.Valor || 0,
-                    Categoria: t.categoria || t.Categoria || 'Otros',
-                    Banco: t.banco || t.Banco || '--',
-                    Detalle: t.detalle || t.Detalle || '',
-                    Producto: t.producto || t.Producto || '',
-                    NumeroProducto: t.numero_producto || t.NumeroProducto || '',
-                    Miembro: t.miembro || t.Miembro || ''
-                }));
-                console.log(`📊 Loaded ${allTransactions.length} transactions from JSON`);
-            }
+            console.warn('⚠️ No members found for this family. Triggering setup.');
+            currentFamilyMembers = [];
+            showSetupModal();
         }
 
-        applyFilters();
-        renderAll();
-
-    } catch (error) {
-        console.error('Error loading data:', error);
-        allTransactions = [];
-        renderAll();
+    } catch (err) {
+        console.error('Error fetching members:', err);
+        showNotification('Error cargando miembros de la familia', 'error');
     }
 }
 
-// Save transactions to localStorage
-function saveTransactions() {
-    try {
-        localStorage.setItem('finanzas_transactions', JSON.stringify(allTransactions));
-        console.log(`💾 Saved ${allTransactions.length} transactions to localStorage`);
-    } catch (error) {
-        console.error('Error saving transactions:', error);
+// REALTIME UPDATES
+// =========================================
+function setupRealtime() {
+    const familyId = getCurrentFamilyId();
+    console.log('📡 Setting up Realtime subscription for family:', familyId);
+
+    const subscription = supabase
+        .channel('public:movimientos')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'movimientos' }, payload => {
+            console.log('🔔 Realtime change received:', payload);
+
+            // Check if change belongs to current family
+            const record = payload.new || payload.old;
+            if (record && record.family_id === familyId) {
+                console.log('🔄 Refreshing data due to remote change...');
+                showNotification('Sincronizando cambios detectados...', 'success');
+                loadData(true); // Silent reload
+            }
+        })
+        .subscribe((status) => {
+            console.log('📡 Realtime status:', status);
+        });
+}
+
+function showSetupModal() {
+    const modal = document.getElementById('modal-setup-members');
+    if (modal) modal.classList.remove('hidden');
+}
+
+function addMemberInput() {
+    const container = document.getElementById('setup-members-list');
+    const div = document.createElement('div');
+    div.className = 'flex gap-2';
+    div.innerHTML = `
+    < input type = "text" placeholder = "Nombre" class="flex-1 rounded-lg border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-[#111827] text-sm" >
+        <select class="rounded-lg border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-[#111827] text-sm">
+            <option value="bg-blue-500">Azul</option>
+            <option value="bg-purple-500">Morado</option>
+            <option value="bg-green-500">Verde</option>
+            <option value="bg-orange-500">Naranja</option>
+            <option value="bg-pink-500">Rosa</option>
+            <option value="bg-red-500">Rojo</option>
+        </select>
+`;
+    container.appendChild(div);
+}
+
+async function saveInitialMembers() {
+    const container = document.getElementById('setup-members-list');
+    const rows = container.querySelectorAll('div.flex');
+    const newMembers = [];
+    const familyId = getCurrentFamilyId();
+
+    rows.forEach(row => {
+        const name = row.querySelector('input').value.trim();
+        const color = row.querySelector('select').value;
+        if (name) {
+            newMembers.push({
+                family_id: familyId,
+                name: name,
+                initials: name.charAt(0).toUpperCase(),
+                color: color
+            });
+        }
+    });
+
+    if (newMembers.length === 0) {
+        alert('Por favor agrega al menos un miembro');
+        return;
     }
+
+    try {
+        const { data, error } = await supabase.from('family_members').insert(newMembers).select();
+        if (error) throw error;
+
+        currentFamilyMembers = data;
+        document.getElementById('modal-setup-members').classList.add('hidden');
+        showNotification('¡Familia configurada correctamente!', 'success');
+        updateMemberDropdowns(); // Refresh UI
+
+        // Reload data just in case
+        await loadData();
+
+    } catch (err) {
+        console.error('Error saving members:', err);
+        alert('Error guardando miembros: ' + err.message);
+    }
+}
+
+function updateMemberDropdowns() {
+    // 1. Update Filter Dropdown (Resumen & Gastos & Ingresos)
+    initMemberFilter(); // Resumen member filter
+
+    const updateSelect = (id) => {
+        const select = document.getElementById(id);
+        if (!select) return;
+        // Keep first option (All/Label)
+        const first = select.firstElementChild;
+        select.innerHTML = '';
+        if (first) select.appendChild(first);
+
+        currentFamilyMembers.forEach(m => {
+            const opt = document.createElement('option');
+            opt.value = m.id; // Now using UUID from DB
+            opt.textContent = m.name;
+            select.appendChild(opt);
+        });
+    };
+
+    updateSelect('filter-member-gastos');
+    updateSelect('filter-member-ingresos');
+    updateSelect('upload-member');
+}
+
+
+// Load data from localStorage (primary) or JSON file (fallback)
+// Load data from Supabase
+// DATA HANDLING
+// =========================================
+async function loadData(silent = false) {
+    try {
+        if (!silent) console.log('📥 Fetching data from Supabase...');
+        const familyId = getCurrentFamilyId();
+
+        // Filter by FAMILY ID
+        const { data, error } = await supabase
+            .from('movimientos')
+            .select('*')
+            .eq('family_id', familyId);
+
+        if (error) throw error;
+
+        if (data) {
+            // Normalize data keys (DB is snake_case, App uses PascalCase)
+            allTransactions = data.map(t => ({
+                id: t.id, // Keep ID for updates
+                Fecha: t.fecha,
+                Tipo: t.tipo,
+                Valor: t.valor || 0,
+                Categoria: t.categoria || 'Otros',
+                Banco: t.banco || '--',
+                Detalle: t.detalle || '',
+                Producto: t.producto || '',
+                NumeroProducto: t.numero_producto || '',
+                Miembro: t.miembro || ''
+            }));
+            if (!silent) console.log(`📊 Loaded ${allTransactions.length} transactions from Supabase for family: ${familyId}`);
+        }
+
+    } catch (error) {
+        console.error('Error loading data from Supabase:', error);
+        showNotification('Error cargando datos: ' + error.message, 'error');
+        allTransactions = [];
+    }
+    renderAll();
+}
+
+// Save transactions is now handled via direct DB updates
+function saveTransactions() {
+    // Deprecated for bulk saves, use specific update functions
+    console.warn('saveTransactions is deprecated. Use direct Supabase calls.');
 }
 
 // =========================================
@@ -109,7 +271,7 @@ function navigateTo(view) {
     // Show/hide sections
     const sections = document.querySelectorAll('section.view-section');
     sections.forEach(section => {
-        if (section.id === `section-${view}`) {
+        if (section.id === `section - ${view} `) {
             section.classList.add('active');
         } else {
             section.classList.remove('active');
@@ -199,14 +361,24 @@ function applyFilters() {
             startDate = new Date(0);
     }
 
+    // Map selectedMembers (which are member IDs) to a set for quick lookup
+    const selectedMemberIds = new Set(selectedMembers);
+
     filteredTransactions = allTransactions.filter(t => {
         const date = new Date(t.Fecha);
         const dateInRange = date >= startDate && date <= endDate;
 
         // Filter by members if specific members are selected
-        const memberMatch = selectedMembers.length === 0 || selectedMembers.includes(t.Miembro);
+        // If selectedMembers is empty, it means "all members" are selected.
+        const memberMatch = selectedMemberIds.size === 0 || selectedMemberIds.has(t.Miembro);
 
-        return dateInRange && memberMatch;
+        // Fallback for legacy data where Miembro might be a name string instead of an ID
+        // This checks if the transaction's Miembro (name or ID) corresponds to any of the selected members.
+        const legacyMemberMatch = selectedMemberIds.size === 0 || currentFamilyMembers.some(m =>
+            selectedMemberIds.has(m.id) && (m.id === t.Miembro || m.name.toLowerCase() === (t.Miembro || '').toLowerCase())
+        );
+
+        return dateInRange && (memberMatch || legacyMemberMatch);
     });
 
     // Reset pagination
@@ -344,7 +516,7 @@ function renderIncomeVsExpensesChart() {
     const monthlyData = {};
     filteredTransactions.forEach(t => {
         const date = new Date(t.Fecha);
-        const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        const monthKey = `${date.getFullYear()} -${String(date.getMonth() + 1).padStart(2, '0')} `;
         if (!monthlyData[monthKey]) {
             monthlyData[monthKey] = { income: 0, expenses: 0 };
         }
@@ -505,7 +677,7 @@ function renderDailyExpensesChart(expenseData = null) {
                 legend: { display: false },
                 tooltip: {
                     callbacks: {
-                        label: (context) => `Gasto: ${formatCurrency(context.parsed.y)}`
+                        label: (context) => `Gasto: ${formatCurrency(context.parsed.y)} `
                     }
                 }
             },
@@ -596,14 +768,14 @@ function renderCategoryDonut() {
     const legendContainer = document.getElementById('category-legend');
     if (legendContainer) {
         legendContainer.innerHTML = sorted.map(([cat, val], i) => `
-            <div class="flex items-center justify-between gap-2">
+    < div class="flex items-center justify-between gap-2" >
                 <div class="flex items-center gap-2">
                     <span class="size-3 rounded-full" style="background: ${colors[i]}"></span>
                     <span class="text-sm font-medium">${cat}</span>
                 </div>
                 <span class="text-sm text-slate-500 dark:text-slate-400">${formatCurrency(val)}</span>
-            </div>
-        `).join('');
+            </div >
+    `).join('');
     }
 }
 
@@ -624,7 +796,7 @@ function renderRecentTransactions() {
         const prefix = isExpense ? '-' : '+';
 
         return `
-            <div class="flex items-center justify-between py-2">
+    < div class="flex items-center justify-between py-2" >
                 <div class="flex items-center gap-3">
                     <div class="flex items-center justify-center size-10 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500">
                         <span class="material-symbols-outlined text-[20px]">${icon}</span>
@@ -635,8 +807,8 @@ function renderRecentTransactions() {
                     </div>
                 </div>
                 <span class="text-sm font-bold ${valueClass}">${prefix}${formatCurrency(Math.abs(value))}</span>
-            </div>
-        `;
+            </div >
+    `;
     }).join('');
 }
 
@@ -662,16 +834,18 @@ function renderFamilyIncome() {
     });
     const totalIncome = ingresos.reduce((sum, t) => sum + Math.abs(parseFloat(t.Valor) || 0), 0);
 
-    // Mock family data - in production this would be per-member tracking
-    const familyData = [
-        { member: CONFIG.FAMILY_MEMBERS[0], income: totalIncome * 0.55, goal: totalIncome * 0.6 },
-        { member: CONFIG.FAMILY_MEMBERS[1], income: totalIncome * 0.45, goal: totalIncome * 0.5 }
-    ];
+    // Distribute total income among currentFamilyMembers for display purposes
+    const familyData = currentFamilyMembers.map((member, index) => {
+        // Simple distribution for demo, in real app this would be tracked per member
+        const incomeShare = totalIncome * (index === 0 ? 0.55 : 0.45); // Example distribution
+        const goalShare = totalIncome * (index === 0 ? 0.6 : 0.5); // Example goal
+        return { member, income: incomeShare, goal: goalShare };
+    });
 
     container.innerHTML = familyData.map(({ member, income, goal }) => {
         const progress = Math.min((income / goal) * 100, 100);
         return `
-            <div class="p-4 rounded-xl bg-slate-50 dark:bg-[#1c2333] border border-slate-100 dark:border-slate-800">
+    < div class="p-4 rounded-xl bg-slate-50 dark:bg-[#1c2333] border border-slate-100 dark:border-slate-800" >
                 <div class="flex items-center justify-between mb-3">
                     <div class="flex items-center gap-3">
                         <div class="flex items-center justify-center size-10 rounded-full ${member.color} text-white font-bold text-sm">
@@ -687,8 +861,8 @@ function renderFamilyIncome() {
                 <div class="h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
                     <div class="h-full bg-primary rounded-full transition-all" style="width: ${progress}%"></div>
                 </div>
-            </div>
-        `;
+            </div >
+    `;
     }).join('');
 }
 
@@ -726,7 +900,7 @@ function renderAccounts() {
     }
 
     container.innerHTML = banks.map(([bank, balance]) => `
-        <div class="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-[#1c2333] hover:bg-slate-100 dark:hover:bg-[#232b3b] transition-colors cursor-pointer">
+    < div class="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-[#1c2333] hover:bg-slate-100 dark:hover:bg-[#232b3b] transition-colors cursor-pointer" >
             <div class="flex items-center gap-3">
                 <div class="flex items-center justify-center size-10 rounded-lg bg-primary/10 text-primary">
                     <span class="material-symbols-outlined">account_balance</span>
@@ -737,7 +911,7 @@ function renderAccounts() {
                 </div>
             </div>
             <span class="font-bold ${balance >= 0 ? 'text-secondary' : 'text-danger'}">${formatCurrency(balance)}</span>
-        </div>
+        </div >
     `).join('');
 }
 
@@ -794,16 +968,17 @@ function renderGastosTable() {
 
     tbody.innerHTML = pageData.map((t, pageIndex) => {
         const catColors = CONFIG.CATEGORY_COLORS[t.Categoria] || CONFIG.CATEGORY_COLORS['Otros'];
-        // Buscar miembro real de la transacción
-        const memberData = CONFIG.FAMILY_MEMBERS.find(m => m.id === t.Miembro) ||
-            { id: t.Miembro || 'N/A', name: t.Miembro || 'N/A', initials: (t.Miembro || '?')[0].toUpperCase(), color: 'bg-gray-500' };
+        // Find Dynamic Member
+        const memberData = currentFamilyMembers.find(m => m.id === t.Miembro || m.name.toLowerCase() === (t.Miembro || '').toLowerCase()) ||
+            { id: '?', name: t.Miembro || 'Desc.', initials: (t.Miembro || '?')[0].toUpperCase(), color: 'bg-gray-400' };
+
         // Calcular índice global en allTransactions
         const globalIndex = allTransactions.findIndex(tx =>
             tx.Fecha === t.Fecha && tx.Valor === t.Valor && tx.Detalle === t.Detalle
         );
 
         return `
-            <tr class="hover:bg-slate-50 dark:hover:bg-[#1f2633] transition-colors">
+    < tr class="hover:bg-slate-50 dark:hover:bg-[#1f2633] transition-colors" >
                 <td class="px-6 py-4 whitespace-nowrap">${formatDate(t.Fecha)}</td>
                 <td class="px-6 py-4 whitespace-nowrap">
                     <div class="flex items-center gap-2">
@@ -825,8 +1000,8 @@ function renderGastosTable() {
                     </div>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-right font-bold text-danger">-${formatCurrency(Math.abs(parseFloat(t.Valor) || 0))}</td>
-            </tr>
-        `;
+            </tr >
+    `;
     }).join('');
 
     // Update pagination info
@@ -888,16 +1063,16 @@ function renderIngresosTable() {
 
     tbody.innerHTML = pageData.map((t, pageIndex) => {
         const sourceColors = CONFIG.CATEGORY_COLORS[t.Categoria] || CONFIG.CATEGORY_COLORS['Sueldo'];
-        // Buscar miembro real de la transacción
-        const memberData = CONFIG.FAMILY_MEMBERS.find(m => m.id === t.Miembro) ||
-            { id: t.Miembro || 'N/A', name: t.Miembro || 'N/A', initials: (t.Miembro || '?')[0].toUpperCase(), color: 'bg-gray-500' };
+        // Buscar miembro real de la transacción (Dinámico)
+        const memberData = currentFamilyMembers.find(m => m.id === t.Miembro || m.name.toLowerCase() === (t.Miembro || '').toLowerCase()) ||
+            { id: '?', name: t.Miembro || 'Desc.', initials: (t.Miembro || '?')[0].toUpperCase(), color: 'bg-gray-400' };
         // Calcular índice global en allTransactions
         const globalIndex = allTransactions.findIndex(tx =>
             tx.Fecha === t.Fecha && tx.Valor === t.Valor && tx.Detalle === t.Detalle
         );
 
         return `
-            <tr class="hover:bg-gray-50 dark:hover:bg-[#232936] transition-colors">
+    < tr class="hover:bg-gray-50 dark:hover:bg-[#232936] transition-colors" >
                 <td class="py-4 px-6 text-sm font-medium whitespace-nowrap">${formatDate(t.Fecha)}</td>
                 <td class="py-4 px-6">
                     <div class="flex items-center gap-3">
@@ -915,8 +1090,8 @@ function renderIngresosTable() {
                 <td class="py-4 px-6 text-right">
                     <span class="text-secondary font-bold text-sm">+${formatCurrency(Math.abs(parseFloat(t.Valor) || 0))}</span>
                 </td>
-            </tr>
-        `;
+            </tr >
+    `;
     }).join('');
 
     // Update pagination info
@@ -939,9 +1114,9 @@ async function fetchAIRecommendations() {
     if (!container) return;
 
     container.innerHTML = `
-        <div class="p-4 rounded-xl bg-gradient-to-br from-slate-50 to-blue-50/50 dark:from-slate-800/50 dark:to-blue-900/20 border border-slate-100 dark:border-slate-800">
-            <p class="text-sm text-slate-500 dark:text-slate-400 animate-pulse">✨ Analizando tus finanzas...</p>
-        </div>
+    < div class="p-4 rounded-xl bg-gradient-to-br from-slate-50 to-blue-50/50 dark:from-slate-800/50 dark:to-blue-900/20 border border-slate-100 dark:border-slate-800" >
+        <p class="text-sm text-slate-500 dark:text-slate-400 animate-pulse">✨ Analizando tus finanzas...</p>
+        </div >
     `;
 
     // Calculate summary data
@@ -992,7 +1167,7 @@ async function fetchAIRecommendations() {
     });
     const topCategories = Object.entries(categorySpend).sort((a, b) => b[1] - a[1]).slice(0, 5);
 
-    const prompt = `Eres un asesor financiero familiar experto. Analiza estos datos y da 3 recomendaciones CORTAS (máximo 2 líneas cada una) y ACCIONABLES:
+    const prompt = `Eres un asesor financiero familiar experto.Analiza estos datos y da 3 recomendaciones CORTAS(máximo 2 líneas cada una) y ACCIONABLES:
 
 Ingresos del mes: $${totalIngresos.toLocaleString()}
 Gastos del mes: $${totalGastos.toLocaleString()}
@@ -1002,7 +1177,7 @@ Gastos por categoría: ${topCategories.map(([cat, val]) => `${cat}: $${val.toLoc
 Responde en español, con emojis, formato: "1. [emoji] [consejo corto]" para cada recomendación.`;
 
     try {
-        const response = await fetch(`${CONFIG.GEMINI_API_URL}?key=${CONFIG.GEMINI_API_KEY}`, {
+        const response = await fetch(`${CONFIG.GEMINI_API_URL}?key = ${CONFIG.GEMINI_API_KEY} `, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -1016,23 +1191,23 @@ Responde en español, con emojis, formato: "1. [emoji] [consejo corto]" para cad
 
             const recommendations = text.split('\n').filter(line => line.trim().match(/^\d\./));
             container.innerHTML = recommendations.map(rec => `
-                <div class="p-4 rounded-xl bg-gradient-to-br from-slate-50 to-blue-50/50 dark:from-slate-800/50 dark:to-blue-900/20 border border-slate-100 dark:border-slate-800">
-                    <p class="text-sm">${rec.replace(/^\d\.\s*/, '')}</p>
-                </div>
-            `).join('');
+    < div class="p-4 rounded-xl bg-gradient-to-br from-slate-50 to-blue-50/50 dark:from-slate-800/50 dark:to-blue-900/20 border border-slate-100 dark:border-slate-800" >
+        <p class="text-sm">${rec.replace(/^\d\.\s*/, '')}</p>
+                </div >
+    `).join('');
         } else {
             throw new Error('API error');
         }
     } catch (error) {
         console.error('AI Recommendations error:', error);
         container.innerHTML = `
-            <div class="p-4 rounded-xl bg-gradient-to-br from-slate-50 to-blue-50/50 dark:from-slate-800/50 dark:to-blue-900/20 border border-slate-100 dark:border-slate-800">
-                <p class="text-sm">💡 Mantén un ahorro del 20% de tus ingresos mensuales.</p>
-            </div>
-            <div class="p-4 rounded-xl bg-gradient-to-br from-slate-50 to-blue-50/50 dark:from-slate-800/50 dark:to-blue-900/20 border border-slate-100 dark:border-slate-800">
-                <p class="text-sm">📊 Revisa tus gastos por categoría para identificar oportunidades.</p>
-            </div>
-        `;
+    < div class="p-4 rounded-xl bg-gradient-to-br from-slate-50 to-blue-50/50 dark:from-slate-800/50 dark:to-blue-900/20 border border-slate-100 dark:border-slate-800" >
+        <p class="text-sm">💡 Mantén un ahorro del 20% de tus ingresos mensuales.</p>
+            </div >
+    <div class="p-4 rounded-xl bg-gradient-to-br from-slate-50 to-blue-50/50 dark:from-slate-800/50 dark:to-blue-900/20 border border-slate-100 dark:border-slate-800">
+        <p class="text-sm">📊 Revisa tus gastos por categoría para identificar oportunidades.</p>
+    </div>
+`;
     }
 
     // Setup refresh button
@@ -1087,7 +1262,7 @@ async function handleFile(file) {
         return;
     }
 
-    console.log(`📁 Processing file: ${file.name} for member: ${member}`);
+    console.log(`📁 Processing file: ${file.name} for member: ${member} `);
 
     // Add to upload history (processing state)
     addUploadHistory(file.name, 'Detectando...', member, 'processing');
@@ -1147,7 +1322,7 @@ async function handleFile(file) {
             // Parse date (handle Excel serial dates)
             if (typeof fecha === 'number') {
                 const date = XLSX.SSF.parse_date_code(fecha);
-                fecha = `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')}`;
+                fecha = `${date.y} -${String(date.m).padStart(2, '0')} -${String(date.d).padStart(2, '0')} `;
             } else if (fecha) {
                 // Use parseDateString to handle DD/MM/YYYY format correctly
                 const parsedDate = parseDateString(fecha);
@@ -1156,7 +1331,7 @@ async function handleFile(file) {
                     const y = parsedDate.getFullYear();
                     const m = String(parsedDate.getMonth() + 1).padStart(2, '0');
                     const d = String(parsedDate.getDate()).padStart(2, '0');
-                    fecha = `${y}-${m}-${d}`;
+                    fecha = `${y} -${m} -${d} `;
                 }
             }
 
@@ -1203,35 +1378,55 @@ async function handleFile(file) {
         }
 
         console.log(`✅ Parsed ${newTransactions.length} transactions from Excel`);
-        console.log(`🏦 Banks found: ${Array.from(banksFound).join(', ')}`);
+        console.log(`🏦 Banks found: ${Array.from(banksFound).join(', ')} `);
 
         if (newTransactions.length === 0) {
             throw new Error('No se encontraron transacciones válidas en el archivo');
         }
 
         // Add to existing transactions
-        allTransactions = [...allTransactions, ...newTransactions];
+        // Save to Supabase
 
-        // Save to localStorage for persistence
-        saveTransactions();
+        // Prepare payload for Supabase (snake_case)
+        const payload = newTransactions.map(t => ({
+            fecha: t.Fecha,
+            tipo: t.Tipo,
+            valor: t.Valor,
+            categoria: t.Categoria,
+            banco: t.Banco,
+            detalle: t.Detalle,
+            producto: t.Producto,
+            numero_producto: t.NumeroProducto,
+            miembro: t.Miembro,
+            family_id: getCurrentFamilyId() // Add Family ID
+        }));
 
-        // Re-apply filters and render
-        applyFilters();
-        renderAll();
+        console.log('📤 Uploading to Supabase...', payload.length);
+
+        // Upload in batches of 100
+        const batchSize = 100;
+        for (let i = 0; i < payload.length; i += batchSize) {
+            const batch = payload.slice(i, i + batchSize);
+            const { error } = await supabase.from('movimientos').insert(batch);
+            if (error) throw error;
+        }
+
+        // Re-load data from server to get persistent state (and IDs)
+        await loadData();
 
         // Update history to success with banks info
         const banksStr = Array.from(banksFound).join(', ') || 'N/A';
         addUploadHistory(file.name, banksStr, member, 'success');
-        showNotification(`Se cargaron ${newTransactions.length} transacciones de ${banksStr}`, 'success');
+        showNotification(`Se cargaron ${newTransactions.length} transacciones de ${banksStr} y se sincronizaron con la nube`, 'success');
 
     } catch (error) {
         console.error('Error processing file:', error);
         addUploadHistory(file.name, 'Error', member, 'error');
-        showNotification(`Error al procesar archivo: ${error.message}`, 'error');
+        showNotification(`Error al procesar archivo: ${error.message} `, 'error');
     }
 }
 
-function addUploadHistory(filename, bank, member, status) {
+function addUploadHistory(filename, bank, memberId, status) {
     const tbody = document.getElementById('upload-history-body');
     if (!tbody) return;
 
@@ -1241,10 +1436,10 @@ function addUploadHistory(filename, bank, member, status) {
         error: '<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400"><span class="size-1.5 rounded-full bg-red-500"></span>Error</span>'
     };
 
-    const memberData = CONFIG.FAMILY_MEMBERS.find(m => m.id === member) || CONFIG.FAMILY_MEMBERS[0];
+    const memberData = currentFamilyMembers.find(m => m.id === memberId) || { id: memberId, name: 'Desconocido', initials: (memberId || '?')[0].toUpperCase(), color: 'bg-gray-500' };
 
     const row = `
-        <tr class="hover:bg-slate-50 dark:hover:bg-[#1c2333]/50 transition-colors">
+    < tr class="hover:bg-slate-50 dark:hover:bg-[#1c2333]/50 transition-colors" >
             <td class="px-6 py-4">
                 <div class="flex items-center gap-3">
                     <span class="material-symbols-outlined ${status === 'success' ? 'text-green-500' : status === 'error' ? 'text-red-500' : 'text-blue-500 animate-pulse'}">${status === 'success' ? 'description' : status === 'error' ? 'error' : 'sync'}</span>
@@ -1259,7 +1454,7 @@ function addUploadHistory(filename, bank, member, status) {
                 </div>
             </td>
             <td class="px-6 py-4 text-right">${statusBadge[status]}</td>
-        </tr>
+        </tr >
     `;
 
     // Clear "no uploads" message if present
@@ -1283,8 +1478,8 @@ function formatCurrency(value) {
 }
 
 function formatCurrencyShort(value) {
-    if (value >= 1000000) return `$${(value / 1000000).toFixed(1)}M`;
-    if (value >= 1000) return `$${(value / 1000).toFixed(0)}K`;
+    if (value >= 1000000) return `$${(value / 1000000).toFixed(1)} M`;
+    if (value >= 1000) return `$${(value / 1000).toFixed(0)} K`;
     return formatCurrency(value);
 }
 
@@ -1377,14 +1572,14 @@ function populateAdvancedFilters() {
     const categories = [...new Set(allTransactions.map(t => t.Categoria).filter(c => c))];
 
     // Populate Gastos filters
-    populateSelect('filter-member-gastos', CONFIG.FAMILY_MEMBERS.map(m => ({ value: m.id, label: m.name })), 'Miembro: Todos');
+    populateSelect('filter-member-gastos', currentFamilyMembers.map(m => ({ value: m.id, label: m.name })), 'Miembro: Todos');
     populateSelect('filter-month-gastos', months.map(m => ({ value: m, label: MONTHS_ES[m] })), 'Mes: Todos');
     populateSelect('filter-year-gastos', years.map(y => ({ value: y, label: y })), 'Año: Todos');
     populateSelect('filter-bank-gastos', banks.map(b => ({ value: b, label: b })), 'Banco: Todos');
     populateSelect('filter-category-gastos', categories.map(c => ({ value: c, label: c })), 'Categoría: Todas');
 
     // Populate Ingresos filters
-    populateSelect('filter-member-ingresos', CONFIG.FAMILY_MEMBERS.map(m => ({ value: m.id, label: m.name })), 'Miembro: Todos');
+    populateSelect('filter-member-ingresos', currentFamilyMembers.map(m => ({ value: m.id, label: m.name })), 'Miembro: Todos');
     populateSelect('filter-month-ingresos', months.map(m => ({ value: m, label: MONTHS_ES[m] })), 'Mes: Todos');
     populateSelect('filter-year-ingresos', years.map(y => ({ value: y, label: y })), 'Año: Todos');
     populateSelect('filter-bank-ingresos', banks.map(b => ({ value: b, label: b })), 'Banco: Todos');
@@ -1410,9 +1605,15 @@ function applyResumenFilters() {
         if (yearFilter !== 'all' && date.getFullYear() !== parseInt(yearFilter)) return false;
 
         // Member filter (from selectedMembers global)
-        if (selectedMembers.length > 0 && !selectedMembers.includes(t.Miembro)) return false;
+        // If selectedMembers is empty, it means "all members" are selected.
+        const memberMatch = selectedMembers.length === 0 || selectedMembers.includes(t.Miembro);
 
-        return true;
+        // Fallback for legacy data where Miembro might be a name string instead of an ID
+        const legacyMemberMatch = selectedMembers.length === 0 || currentFamilyMembers.some(m =>
+            selectedMembers.includes(m.id) && (m.id === t.Miembro || m.name.toLowerCase() === (t.Miembro || '').toLowerCase())
+        );
+
+        return memberMatch || legacyMemberMatch;
     });
 
     // Re-render affected components
@@ -1428,8 +1629,8 @@ function populateSelect(selectId, options, defaultLabel) {
     const select = document.getElementById(selectId);
     if (!select) return;
 
-    select.innerHTML = `<option value="all">${defaultLabel}</option>` +
-        options.map(opt => `<option value="${opt.value}">${opt.label}</option>`).join('');
+    select.innerHTML = `< option value = "all" > ${defaultLabel}</option > ` +
+        options.map(opt => `< option value = "${opt.value}" > ${opt.label}</option > `).join('');
 }
 
 function applyGastosFilters() {
@@ -1487,7 +1688,11 @@ function filterByAdvancedCriteria(transactions, filters) {
         const date = parseDateString(t.Fecha);
 
         // Member filter
-        if (filters.member !== 'all' && t.Miembro !== filters.member) return false;
+        // Check if the transaction's member ID matches the filter, or if the member name matches for legacy data
+        const memberFilterMatch = filters.member === 'all' ||
+            t.Miembro === filters.member ||
+            currentFamilyMembers.some(m => m.id === filters.member && m.name.toLowerCase() === (t.Miembro || '').toLowerCase());
+        if (!memberFilterMatch) return false;
 
         // Month filter
         if (filters.month !== 'all' && date.getMonth() !== parseInt(filters.month)) return false;
@@ -1520,18 +1725,41 @@ function initMemberFilter() {
     const container = document.getElementById('member-checkboxes');
     if (!container) return;
 
-    // Populate checkboxes dynamically from CONFIG
-    container.innerHTML = CONFIG.FAMILY_MEMBERS.map(member => `
-        <label class="flex items-center gap-3 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg p-2 -m-1">
-            <input type="checkbox" id="member-${member.id}" value="${member.id}" checked
-                class="w-4 h-4 text-primary rounded border-slate-300 focus:ring-primary"
-                onchange="onMemberFilterChange('${member.id}')">
+    container.innerHTML = `
+    < label class="flex items-center gap-3 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg p-2 -m-1" >
+        <input type="checkbox" id="member-all" value="all" checked
+            class="w-4 h-4 text-primary rounded border-slate-300 focus:ring-primary"
+            onchange="onMemberFilterChange('all')">
             <div class="flex items-center gap-2">
-                <div class="size-6 rounded-full ${member.color} flex items-center justify-center text-[10px] font-bold text-white">${member.initials}</div>
-                <span class="text-sm">${member.name}</span>
+                <div class="size-6 rounded-full bg-slate-500 flex items-center justify-center text-[10px] font-bold text-white">ALL</div>
+                <span class="text-sm">Todos los Miembros</span>
             </div>
         </label>
-    `).join('');
+`;
+
+    currentFamilyMembers.forEach(member => {
+        const div = document.createElement('div');
+        div.className = 'flex items-center justify-between p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-[#1f2633]';
+        div.innerHTML = `
+    < label class="flex items-center gap-3 cursor-pointer" >
+        <input type="checkbox" id="member-${member.id}" value="${member.id}" checked
+            class="w-4 h-4 text-primary rounded border-slate-300 focus:ring-primary"
+            onchange="onMemberFilterChange('${member.id}')">
+            <div class="flex items-center gap-2">
+                <div class="size-6 rounded-full ${member.color} flex items-center justify-center text-[10px] text-white font-bold">
+                    ${member.initials}
+                </div>
+                <span class="text-sm font-medium">${member.name}</span>
+            </div>
+        </label>
+`;
+        container.appendChild(div);
+    });
+
+    // Ensure 'all' is checked initially and selectedMembers is empty
+    document.getElementById('member-all').checked = true;
+    selectedMembers = [];
+    updateMemberFilterLabel();
 
     // Close dropdown when clicking outside
     document.addEventListener('click', (e) => {
@@ -1552,54 +1780,34 @@ function toggleMemberDropdown() {
 
 function onMemberFilterChange(memberId) {
     const allCheckbox = document.getElementById('member-all');
+    const memberCheckboxes = currentFamilyMembers.map(m => document.getElementById(`member - ${m.id} `));
 
     if (memberId === 'all') {
-        // If "All" is checked, select all members
+        // If "All" is checked, select all members and clear selectedMembers
         if (allCheckbox.checked) {
             selectedMembers = [];
-            CONFIG.FAMILY_MEMBERS.forEach(m => {
-                const cb = document.getElementById(`member-${m.id}`);
-                if (cb) cb.checked = true;
-            });
+            memberCheckboxes.forEach(cb => { if (cb) cb.checked = true; });
         } else {
-            // If "All" is unchecked, deselect all
-            CONFIG.FAMILY_MEMBERS.forEach(m => {
-                const cb = document.getElementById(`member-${m.id}`);
-                if (cb) cb.checked = false;
-            });
-            selectedMembers = [];
+            // If "All" is unchecked, deselect all and set selectedMembers to all IDs
+            selectedMembers = currentFamilyMembers.map(m => m.id);
+            memberCheckboxes.forEach(cb => { if (cb) cb.checked = false; });
         }
     } else {
         // Individual member checkbox changed
-        const memberCheckbox = document.getElementById(`member-${memberId}`);
+        const memberCheckbox = document.getElementById(`member - ${memberId} `);
         if (memberCheckbox.checked) {
-            // If checking and "All" was selected, need to switch to specific selection
-            if (selectedMembers.length === 0) {
-                // Was "All", now switching to specific
-                selectedMembers = CONFIG.FAMILY_MEMBERS.map(m => m.id).filter(id => id !== memberId);
-                selectedMembers.push(memberId);
-            } else {
+            // Add member to selectedMembers if not already there
+            if (!selectedMembers.includes(memberId)) {
                 selectedMembers.push(memberId);
             }
         } else {
-            // Unchecking a member
-            if (selectedMembers.length === 0) {
-                // Was "All", now switching to all except this one
-                selectedMembers = CONFIG.FAMILY_MEMBERS.map(m => m.id).filter(id => id !== memberId);
-            } else {
-                selectedMembers = selectedMembers.filter(id => id !== memberId);
-            }
+            // Remove member from selectedMembers
+            selectedMembers = selectedMembers.filter(id => id !== memberId);
         }
 
-        // Update "All" checkbox state
-        const allSelected = CONFIG.FAMILY_MEMBERS.every(m => {
-            const cb = document.getElementById(`member-${m.id}`);
-            return cb && cb.checked;
-        });
-        const noneSelected = CONFIG.FAMILY_MEMBERS.every(m => {
-            const cb = document.getElementById(`member-${m.id}`);
-            return cb && !cb.checked;
-        });
+        // Update "All" checkbox state based on individual selections
+        const allSelected = memberCheckboxes.every(cb => cb && cb.checked);
+        const noneSelected = memberCheckboxes.every(cb => cb && !cb.checked);
 
         if (allSelected) {
             allCheckbox.checked = true;
@@ -1609,14 +1817,11 @@ function onMemberFilterChange(memberId) {
         }
 
         if (noneSelected) {
-            // If none selected, default to all
+            // If none selected, default to all and show warning
             allCheckbox.checked = true;
             selectedMembers = [];
-            CONFIG.FAMILY_MEMBERS.forEach(m => {
-                const cb = document.getElementById(`member-${m.id}`);
-                if (cb) cb.checked = true;
-            });
-            showNotification('Debe seleccionar al menos un miembro', 'warning');
+            memberCheckboxes.forEach(cb => { if (cb) cb.checked = true; });
+            showNotification('Debe seleccionar al menos un miembro. Se han seleccionado todos por defecto.', 'warning');
         }
     }
 
@@ -1632,7 +1837,7 @@ function updateMemberFilterLabel() {
     if (selectedMembers.length === 0) {
         label.textContent = 'Todos los Miembros';
     } else if (selectedMembers.length === 1) {
-        const member = CONFIG.FAMILY_MEMBERS.find(m => m.id === selectedMembers[0]);
+        const member = currentFamilyMembers.find(m => m.id === selectedMembers[0]);
         label.textContent = member ? member.name : 'Un Miembro';
     } else {
         label.textContent = `${selectedMembers.length} Miembros`;
@@ -1660,14 +1865,14 @@ function showNotification(message, type = 'success') {
     };
 
     const toast = document.createElement('div');
-    toast.className = `pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-xl ${colors[type]} text-white shadow-lg transform translate-x-full opacity-0 transition-all duration-300`;
+    toast.className = `pointer - events - auto flex items - center gap - 3 px - 4 py - 3 rounded - xl ${colors[type]} text - white shadow - lg transform translate - x - full opacity - 0 transition - all duration - 300`;
     toast.innerHTML = `
-        <span class="material-symbols-outlined">${icons[type]}</span>
+    < span class="material-symbols-outlined" > ${icons[type]}</span >
         <span class="text-sm font-medium">${message}</span>
         <button onclick="this.parentElement.remove()" class="ml-2 hover:bg-white/20 rounded-full p-1 transition-colors">
             <span class="material-symbols-outlined text-sm">close</span>
         </button>
-    `;
+`;
 
     container.appendChild(toast);
 
@@ -1746,7 +1951,7 @@ function onCategorySelectChange() {
     }
 }
 
-function saveEditCategory() {
+async function saveEditCategory() {
     const indexStr = document.getElementById('edit-transaction-index').value;
     const index = parseInt(indexStr, 10);
     const select = document.getElementById('edit-category-select');
@@ -1769,15 +1974,28 @@ function saveEditCategory() {
     }
 
     // Update transaction
-    if (allTransactions[index]) {
+    // Update transaction in Supabase
+    const transaction = allTransactions[index];
+    if (transaction && transaction.id) {
+        const { error } = await supabase
+            .from('movimientos')
+            .update({ categoria: newCategory })
+            .eq('id', transaction.id);
+
+        if (error) {
+            console.error('Error updating category:', error);
+            showNotification('Error al actualizar: ' + error.message, 'error');
+            return;
+        }
+
+        // Update local state
         allTransactions[index].Categoria = newCategory;
-        saveTransactions();
         applyFilters();
         renderAll();
         closeEditCategoryModal();
         showNotification(`Categoría actualizada a "${newCategory}"`, 'success');
     } else {
-        showNotification('Error al actualizar la categoría', 'error');
+        showNotification('Error: Transacción sin ID', 'error');
     }
 }
 

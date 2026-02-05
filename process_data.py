@@ -3,12 +3,15 @@ import pandas as pd
 import csv
 import os
 import re
+import glob
 from category_mapping import get_category_for_merchant
 
 # Inputs
 CSV_2025 = r"C:\Users\Amaya\OneDrive\Documentos\Personal\movimientos_bancarios_2025_claude_v2.csv"
 # Pointing to v1 file which has the 'Categoria ' column (User updated version)
-EXCEL_2026 = r"C:\Users\Amaya\OneDrive\Documentos\Personal\Movimientos\movimientos_bancos_estandarizados.xlsx"
+EXCEL_2026 = r"C:\Users\Amaya\OneDrive\Documentos\Personal\Movimientos\movimientos_bancos_estandarizados_v2.xlsx"
+CSV_2025 = r"C:\Users\Amaya\OneDrive\Documentos\Personal\movimientos_bancarios_2025_claude_v2.csv"
+MOVIMIENTOS_DIR = r"C:\Users\Amaya\OneDrive\Documentos\Personal\Movimientos"
 OUTPUT_FILE = r"C:\Users\Amaya\OneDrive\Documentos\Personal\dashboard_finanzas_2025\data\movimientos.json"
 
 def clean_currency(value_str):
@@ -71,16 +74,31 @@ def process_2025_csv():
         
     return movimientos
 
+def find_latest_excel():
+    """Finds the latest bank standardization file."""
+    pattern = os.path.join(MOVIMIENTOS_DIR, "movimientos_bancos_estandarizados_*.xlsx")
+    files = glob.glob(pattern)
+    if not files:
+        # Fallback to base name if versioned ones not found
+        base = os.path.join(MOVIMIENTOS_DIR, "movimientos_bancos_estandarizados.xlsx")
+        if os.path.exists(base):
+            return base
+        return None
+    return max(files, key=os.path.getmtime)
+
 def process_2026_excel():
     """Reads 2026 Bank Data from Excel (User Updated)."""
-    print(f"Reading 2026 Data: {EXCEL_2026}...")
-    movimientos = []
-    if not os.path.exists(EXCEL_2026):
-        print(f"⚠️ Warning: 2026 File not found.")
-        return []
+    excel_file = find_latest_excel()
+    
+    if not excel_file:
+         print(f"⚠️ Warning: No 'movimientos_bancos_estandarizados_*.xlsx' found in {MOVIMIENTOS_DIR}")
+         return []
 
+    print(f"Reading 2026 Data: {excel_file}...")
+    movimientos = []
+    
     try:
-        df = pd.read_excel(EXCEL_2026, sheet_name='Consolidado')
+        df = pd.read_excel(excel_file, sheet_name='Consolidado')
         df['Fecha'] = df['Fecha'].astype(str).str.slice(0, 10)
         
         # Identify Category Column (User added 'Categoria ' with space?)
