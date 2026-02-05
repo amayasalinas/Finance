@@ -17,7 +17,7 @@ let pagination = {
 // Supabase Configuration
 const SUPABASE_URL = "https://iikarklhudhsfvkhhyub.supabase.co";
 const SUPABASE_KEY = "sb_publishable_PIdI08dSRTLPVauDLxX6Hg_yMEsxwU-";
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // =========================================
 // INITIALIZATION
@@ -51,7 +51,7 @@ async function fetchFamilyMembers() {
     console.log(`Pb Fetching members for family: ${familyId} `);
 
     try {
-        const { data, error } = await supabase
+        const { data, error } = await supabaseClient
             .from('family_members')
             .select('*')
             .eq('family_id', familyId)
@@ -81,7 +81,7 @@ function setupRealtime() {
     const familyId = getCurrentFamilyId();
     console.log('📡 Setting up Realtime subscription for family:', familyId);
 
-    const subscription = supabase
+    const subscription = supabaseClient
         .channel('public:movimientos')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'movimientos' }, payload => {
             console.log('🔔 Realtime change received:', payload);
@@ -147,7 +147,7 @@ async function saveInitialMembers() {
     }
 
     try {
-        const { data, error } = await supabase.from('family_members').insert(newMembers).select();
+        const { data, error } = await supabaseClient.from('family_members').insert(newMembers).select();
         if (error) throw error;
 
         currentFamilyMembers = data;
@@ -200,7 +200,7 @@ async function loadData(silent = false) {
         const familyId = getCurrentFamilyId();
 
         // Filter by FAMILY ID
-        const { data, error } = await supabase
+        const { data, error } = await supabaseClient
             .from('movimientos')
             .select('*')
             .eq('family_id', familyId);
@@ -1407,7 +1407,7 @@ async function handleFile(file) {
         const batchSize = 100;
         for (let i = 0; i < payload.length; i += batchSize) {
             const batch = payload.slice(i, i + batchSize);
-            const { error } = await supabase.from('movimientos').insert(batch);
+            const { error } = await supabaseClient.from('movimientos').insert(batch);
             if (error) throw error;
         }
 
@@ -1977,7 +1977,7 @@ async function saveEditCategory() {
     // Update transaction in Supabase
     const transaction = allTransactions[index];
     if (transaction && transaction.id) {
-        const { error } = await supabase
+        const { error } = await supabaseClient
             .from('movimientos')
             .update({ categoria: newCategory })
             .eq('id', transaction.id);
