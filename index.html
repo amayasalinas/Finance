@@ -723,50 +723,55 @@
                     </div>
                 </div>
 
+                <!-- Filters (Matching Gastos Style) -->
+                <div class="flex flex-col gap-4 mb-6">
+                    <!-- Search -->
+                    <div class="w-full">
+                        <label class="flex flex-col h-12 w-full">
+                            <div
+                                class="flex w-full flex-1 items-stretch rounded-lg h-full border border-border-light dark:border-border-dark bg-surface-light dark:bg-[#282e39] overflow-hidden focus-within:ring-2 focus-within:ring-primary">
+                                <div
+                                    class="text-slate-500 dark:text-slate-400 flex items-center justify-center pl-4 pr-2">
+                                    <span class="material-symbols-outlined text-2xl">search</span>
+                                </div>
+                                <input id="search-ingresos"
+                                    class="flex w-full min-w-0 flex-1 resize-none overflow-hidden text-slate-900 dark:text-white focus:outline-0 bg-transparent h-full placeholder:text-slate-400 px-2 text-base font-normal border-none focus:ring-0"
+                                    placeholder="Buscar por detalle, banco o nota..."
+                                    oninput="applyIngresosFilters()" />
+                            </div>
+                        </label>
+                    </div>
+                    <!-- Filter chips -->
+                    <div class="flex gap-3 flex-wrap items-center">
+                        <select id="filter-member-ingresos"
+                            class="h-9 px-4 rounded-lg border border-border-light dark:border-transparent bg-surface-light dark:bg-[#282e39] text-sm font-medium"
+                            onchange="applyIngresosFilters()">
+                            <option value="all">Miembro: Todos</option>
+                        </select>
+                        <select id="filter-month-ingresos"
+                            class="h-9 px-4 rounded-lg border border-border-light dark:border-transparent bg-surface-light dark:bg-[#282e39] text-sm font-medium"
+                            onchange="applyIngresosFilters()">
+                            <option value="all">Mes: Todos</option>
+                        </select>
+                        <select id="filter-year-ingresos"
+                            class="h-9 px-4 rounded-lg border border-border-light dark:border-transparent bg-surface-light dark:bg-[#282e39] text-sm font-medium"
+                            onchange="applyIngresosFilters()">
+                            <option value="all">Año: Todos</option>
+                        </select>
+                        <select id="filter-bank-ingresos"
+                            class="h-9 px-4 rounded-lg border border-border-light dark:border-transparent bg-surface-light dark:bg-[#282e39] text-sm font-medium"
+                            onchange="applyIngresosFilters()">
+                            <option value="all">Banco: Todos</option>
+                        </select>
+                        <div class="ml-auto flex items-center gap-3">
+                            <span id="ingresos-count" class="text-sm text-slate-500 font-medium">0 resultados</span>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Table -->
                 <div
                     class="flex flex-col gap-4 rounded-xl border border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark overflow-hidden shadow-sm">
-                    <!-- Filters Header -->
-                    <div
-                        class="flex flex-wrap items-center justify-between gap-4 p-4 border-b border-border-light dark:border-border-dark bg-slate-50 dark:bg-[#1c212b]">
-                        <div class="flex flex-wrap gap-3">
-                            <select id="filter-member-ingresos"
-                                class="h-9 px-3 rounded-lg border border-border-light dark:border-border-dark bg-surface-light dark:bg-[#282e39] text-sm font-medium"
-                                onchange="applyIngresosFilters()">
-                                <option value="all">Miembro: Todos</option>
-                            </select>
-                            <select id="filter-month-ingresos"
-                                class="h-9 px-3 rounded-lg border border-border-light dark:border-border-dark bg-surface-light dark:bg-[#282e39] text-sm font-medium"
-                                onchange="applyIngresosFilters()">
-                                <option value="all">Mes: Todos</option>
-                            </select>
-                            <select id="filter-year-ingresos"
-                                class="h-9 px-3 rounded-lg border border-border-light dark:border-border-dark bg-surface-light dark:bg-[#282e39] text-sm font-medium"
-                                onchange="applyIngresosFilters()">
-                                <option value="all">Año: Todos</option>
-                            </select>
-                            <select id="filter-bank-ingresos"
-                                class="h-9 px-3 rounded-lg border border-border-light dark:border-border-dark bg-surface-light dark:bg-[#282e39] text-sm font-medium"
-                                onchange="applyIngresosFilters()">
-                                <option value="all">Banco: Todos</option>
-                            </select>
-                            <select id="filter-category-ingresos"
-                                class="h-9 px-3 rounded-lg border border-border-light dark:border-border-dark bg-surface-light dark:bg-[#282e39] text-sm font-medium"
-                                onchange="applyIngresosFilters()">
-                                <option value="all">Fuente: Todas</option>
-                            </select>
-                        </div>
-                        <div class="ml-auto flex items-center gap-3">
-                            <div
-                                class="hidden sm:flex items-center gap-2 px-3 py-1 bg-white dark:bg-[#1c212b] rounded-lg border border-border-light dark:border-border-dark shadow-sm">
-                                <span class="text-xs font-medium text-slate-500">Total:</span>
-                                <span id="ingresos-filtered-total"
-                                    class="text-sm font-bold text-slate-900 dark:text-white">$0</span>
-                            </div>
-                            <button class="text-primary text-sm font-bold hover:underline"
-                                onclick="clearIngresosFilters()">Limpiar Filtros</button>
-                        </div>
-                    </div>
                     <!-- Data Table -->
                     <div class="overflow-x-auto">
                         <table class="w-full text-left border-collapse">
@@ -972,7 +977,7 @@
     <!-- Scripts -->
     <script src="js/config.js"></script>
     <script src="js/auth.js"></script>
-    <script src="js/app.js?v=4.0"></script>
+    <script src="js/app.js?v=4.1"></script>
 </body>
 
 </html>

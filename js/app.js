@@ -213,7 +213,7 @@ async function loadData(silent = false) {
                 id: t.id, // Keep ID for updates
                 Fecha: t.fecha,
                 Tipo: t.tipo,
-                Valor: t.valor || 0,
+                Valor: typeof t.valor === 'string' ? parseFloat(t.valor.replace(/\./g, '').replace(',', '.')) : (t.valor || 0),
                 Categoria: t.categoria || 'Otros',
                 Banco: t.banco || '--',
                 Detalle: t.detalle || '',
@@ -1338,7 +1338,11 @@ async function handleFile(file) {
             // Parse value (remove currency symbols, commas, etc.)
             let rawValue = 0;
             if (typeof valor === 'string') {
-                rawValue = parseFloat(valor.replace(/[^0-9.-]/g, '')) || 0;
+                // Handle LatAm format: 1.000,00 -> 1000.00
+                // 1. Remove dots (thousands)
+                // 2. Replace comma with dot (decimal)
+                let clean = valor.replace(/\./g, '').replace(',', '.');
+                rawValue = parseFloat(clean.replace(/[^0-9.-]/g, '')) || 0;
             } else if (typeof valor === 'number') {
                 rawValue = valor;
             }
@@ -1679,7 +1683,8 @@ function getIngresosFilterValues() {
         month: document.getElementById('filter-month-ingresos')?.value || 'all',
         year: document.getElementById('filter-year-ingresos')?.value || 'all',
         bank: document.getElementById('filter-bank-ingresos')?.value || 'all',
-        category: document.getElementById('filter-category-ingresos')?.value || 'all'
+        category: document.getElementById('filter-category-ingresos')?.value || 'all',
+        search: document.getElementById('search-ingresos')?.value?.toLowerCase()?.trim() || ''
     };
 }
 
@@ -1780,7 +1785,7 @@ function toggleMemberDropdown() {
 
 function onMemberFilterChange(memberId) {
     const allCheckbox = document.getElementById('member-all');
-    const memberCheckboxes = currentFamilyMembers.map(m => document.getElementById(`member - ${m.id} `));
+    const memberCheckboxes = currentFamilyMembers.map(m => document.getElementById(`member-${m.id}`));
 
     if (memberId === 'all') {
         // If "All" is checked, select all members and clear selectedMembers
