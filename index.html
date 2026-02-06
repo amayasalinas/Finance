@@ -432,9 +432,6 @@
                             class="bg-surface-light dark:bg-surface-dark rounded-xl p-6 border border-border-light dark:border-border-dark shadow-sm">
                             <div class="flex items-center justify-between mb-6">
                                 <h2 class="text-lg font-bold">Gastos por Categoría</h2>
-                                <button class="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500">
-                                    <span class="material-symbols-outlined text-[20px]">more_horiz</span>
-                                </button>
                             </div>
                             <div class="flex flex-col sm:flex-row items-center gap-8">
                                 <div class="relative size-40 shrink-0">
@@ -458,10 +455,6 @@
                             class="bg-surface-light dark:bg-surface-dark rounded-xl p-6 border border-border-light dark:border-border-dark shadow-sm flex-1">
                             <div class="flex items-center justify-between mb-4">
                                 <h2 class="text-lg font-bold">Mis Cuentas</h2>
-                                <button
-                                    class="flex items-center justify-center size-8 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
-                                    <span class="material-symbols-outlined text-[20px]">add</span>
-                                </button>
                             </div>
                             <div id="accounts-list" class="space-y-3">
                                 <!-- Populated by JS -->
@@ -480,11 +473,6 @@
                         <p class="text-slate-500 dark:text-slate-400">Revisa y administra todos los gastos de la
                             familia.</p>
                     </div>
-                    <button
-                        class="flex items-center gap-2 h-10 px-4 bg-primary text-white text-sm font-bold rounded-lg hover:bg-blue-600 transition-colors">
-                        <span class="material-symbols-outlined text-[20px]">add</span>
-                        <span>Nuevo Gasto</span>
-                    </button>
                 </div>
 
                 <!-- Stats Row -->
@@ -638,255 +626,238 @@
                         <p class="text-slate-500 dark:text-slate-400 max-w-2xl">Visualiza y gestiona todas las entradas
                             de dinero de la familia.</p>
                     </div>
-                    <div class="flex gap-2">
-                        <button
-                            class="flex items-center gap-2 px-4 py-2 bg-surface-light dark:bg-[#282e39] border border-border-light dark:border-border-dark rounded-lg text-sm font-medium hover:bg-slate-50 dark:hover:bg-[#323945] transition-colors">
-                            <span class="material-symbols-outlined text-[20px]">download</span>
-                            Exportar CSV
-                        </button>
-                        <button
-                            class="flex items-center gap-2 h-10 px-4 bg-primary text-white text-sm font-bold rounded-lg hover:bg-blue-600 transition-colors">
-                            <span class="material-symbols-outlined text-[20px]">add</span>
-                            <span>Nuevo Ingreso</span>
-                        </button>
-                    </div>
                 </div>
+    </div>
 
-                <!-- Stats & Chart Grid -->
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-                    <!-- Stats -->
-                    <div class="lg:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-4">
-                        <div
-                            class="flex flex-col gap-2 rounded-xl p-6 border border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark">
-                            <p class="text-slate-500 dark:text-slate-400 text-sm font-medium">Ingreso Total Mensual</p>
-                            <p id="ingresos-total-stat" class="text-2xl font-bold">$0.00</p>
-                            <div class="flex items-center gap-1 text-secondary">
-                                <span class="material-symbols-outlined text-lg">trending_up</span>
-                                <p id="ingresos-trend" class="text-sm font-medium">+0% vs mes pasado</p>
-                            </div>
-                        </div>
-                        <div
-                            class="flex flex-col gap-2 rounded-xl p-6 border border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark">
-                            <p class="text-slate-500 dark:text-slate-400 text-sm font-medium">Promedio por Miembro</p>
-                            <p id="ingresos-avg-member" class="text-2xl font-bold">$0.00</p>
-                            <div class="flex items-center gap-1 text-secondary">
-                                <span class="material-symbols-outlined text-lg">trending_up</span>
-                                <p class="text-sm font-medium">estable</p>
-                            </div>
-                        </div>
-                        <div
-                            class="flex flex-col gap-2 rounded-xl p-6 border border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark">
-                            <p class="text-slate-500 dark:text-slate-400 text-sm font-medium">Mayor Fuente</p>
-                            <p id="ingresos-top-source" class="text-2xl font-bold truncate">--</p>
-                            <div class="flex items-center gap-1 text-slate-500">
-                                <span class="material-symbols-outlined text-lg">remove</span>
-                                <p class="text-sm font-medium">Sin cambios</p>
-                            </div>
-                        </div>
-                    </div>
-                    <!-- Mini Chart: Distribution by Member -->
-                    <div
-                        class="rounded-xl p-6 border border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark flex flex-col h-full">
-                        <div class="flex justify-between items-start mb-4">
-                            <p class="font-bold">Distribución por Miembro</p>
-                            <button class="text-primary text-xs font-bold hover:underline">VER INFORME</button>
-                        </div>
-                        <div class="flex-1 flex items-end justify-between gap-4 px-2 min-h-[120px]">
-                            <canvas id="chart-income-members"></canvas>
-                        </div>
-                    </div>
+    <!-- Stats & Chart Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+        <!-- Stats -->
+        <div class="lg:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div
+                class="flex flex-col gap-2 rounded-xl p-6 border border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark">
+                <p class="text-slate-500 dark:text-slate-400 text-sm font-medium">Ingreso Total Mensual</p>
+                <p id="ingresos-total-stat" class="text-2xl font-bold">$0.00</p>
+                <div class="flex items-center gap-1 text-secondary">
+                    <span class="material-symbols-outlined text-lg">trending_up</span>
+                    <p id="ingresos-trend" class="text-sm font-medium">+0% vs mes pasado</p>
                 </div>
-
-                <!-- Filters (Matching Gastos Style) -->
-                <div class="flex flex-col gap-4 mb-6">
-                    <!-- Search -->
-                    <div class="w-full">
-                        <label class="flex flex-col h-12 w-full">
-                            <div
-                                class="flex w-full flex-1 items-stretch rounded-lg h-full border border-border-light dark:border-border-dark bg-surface-light dark:bg-[#282e39] overflow-hidden focus-within:ring-2 focus-within:ring-primary">
-                                <div
-                                    class="text-slate-500 dark:text-slate-400 flex items-center justify-center pl-4 pr-2">
-                                    <span class="material-symbols-outlined text-2xl">search</span>
-                                </div>
-                                <input id="search-ingresos"
-                                    class="flex w-full min-w-0 flex-1 resize-none overflow-hidden text-slate-900 dark:text-white focus:outline-0 bg-transparent h-full placeholder:text-slate-400 px-2 text-base font-normal border-none focus:ring-0"
-                                    placeholder="Buscar por detalle, banco o nota..."
-                                    oninput="applyIngresosFilters()" />
-                            </div>
-                        </label>
-                    </div>
-                    <!-- Filter chips -->
-                    <div class="flex gap-3 flex-wrap items-center">
-                        <select id="filter-member-ingresos"
-                            class="h-9 px-4 rounded-lg border border-border-light dark:border-transparent bg-surface-light dark:bg-[#282e39] text-sm font-medium"
-                            onchange="applyIngresosFilters()">
-                            <option value="all">Miembro: Todos</option>
-                        </select>
-                        <select id="filter-month-ingresos"
-                            class="h-9 px-4 rounded-lg border border-border-light dark:border-transparent bg-surface-light dark:bg-[#282e39] text-sm font-medium"
-                            onchange="applyIngresosFilters()">
-                            <option value="all">Mes: Todos</option>
-                        </select>
-                        <select id="filter-year-ingresos"
-                            class="h-9 px-4 rounded-lg border border-border-light dark:border-transparent bg-surface-light dark:bg-[#282e39] text-sm font-medium"
-                            onchange="applyIngresosFilters()">
-                            <option value="all">Año: Todos</option>
-                        </select>
-                        <select id="filter-bank-ingresos"
-                            class="h-9 px-4 rounded-lg border border-border-light dark:border-transparent bg-surface-light dark:bg-[#282e39] text-sm font-medium"
-                            onchange="applyIngresosFilters()">
-                            <option value="all">Banco: Todos</option>
-                        </select>
-                        <select id="filter-category-ingresos"
-                            class="h-9 px-4 rounded-lg border border-border-light dark:border-transparent bg-surface-light dark:bg-[#282e39] text-sm font-medium"
-                            onchange="applyIngresosFilters()">
-                            <option value="all">Fuente: Todas</option>
-                        </select>
-                        <div class="ml-auto flex items-center gap-3">
-                            <div
-                                class="hidden sm:flex items-center gap-2 px-3 py-1 bg-white dark:bg-[#1c212b] rounded-lg border border-border-light dark:border-border-dark shadow-sm">
-                                <span class="text-xs font-medium text-slate-500">Total:</span>
-                                <span id="ingresos-filtered-total"
-                                    class="text-sm font-bold text-slate-900 dark:text-white">$0</span>
-                            </div>
-                            <span id="ingresos-count" class="text-sm text-slate-500 font-medium">0 resultados</span>
-                        </div>
-                    </div>
+            </div>
+            <div
+                class="flex flex-col gap-2 rounded-xl p-6 border border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark">
+                <p class="text-slate-500 dark:text-slate-400 text-sm font-medium">Promedio por Miembro</p>
+                <p id="ingresos-avg-member" class="text-2xl font-bold">$0.00</p>
+                <div class="flex items-center gap-1 text-secondary">
+                    <span class="material-symbols-outlined text-lg">trending_up</span>
+                    <p class="text-sm font-medium">estable</p>
                 </div>
+            </div>
+            <div
+                class="flex flex-col gap-2 rounded-xl p-6 border border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark">
+                <p class="text-slate-500 dark:text-slate-400 text-sm font-medium">Mayor Fuente</p>
+                <p id="ingresos-top-source" class="text-2xl font-bold truncate">--</p>
+                <div class="flex items-center gap-1 text-slate-500">
+                    <span class="material-symbols-outlined text-lg">remove</span>
+                    <p class="text-sm font-medium">Sin cambios</p>
+                </div>
+            </div>
+        </div>
+        <!-- Mini Chart: Distribution by Member -->
+        <div
+            class="rounded-xl p-6 border border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark flex flex-col h-full">
+            <div class="flex justify-between items-start mb-4">
+                <p class="font-bold">Distribución por Miembro</p>
+                <button class="text-primary text-xs font-bold hover:underline">VER INFORME</button>
+            </div>
+            <div class="flex-1 flex items-end justify-between gap-4 px-2 min-h-[120px]">
+                <canvas id="chart-income-members"></canvas>
+            </div>
+        </div>
+    </div>
 
-                <!-- Table -->
+    <!-- Filters (Matching Gastos Style) -->
+    <div class="flex flex-col gap-4 mb-6">
+        <!-- Search -->
+        <div class="w-full">
+            <label class="flex flex-col h-12 w-full">
                 <div
-                    class="flex flex-col gap-4 rounded-xl border border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark overflow-hidden shadow-sm">
-                    <!-- Data Table -->
+                    class="flex w-full flex-1 items-stretch rounded-lg h-full border border-border-light dark:border-border-dark bg-surface-light dark:bg-[#282e39] overflow-hidden focus-within:ring-2 focus-within:ring-primary">
+                    <div class="text-slate-500 dark:text-slate-400 flex items-center justify-center pl-4 pr-2">
+                        <span class="material-symbols-outlined text-2xl">search</span>
+                    </div>
+                    <input id="search-ingresos"
+                        class="flex w-full min-w-0 flex-1 resize-none overflow-hidden text-slate-900 dark:text-white focus:outline-0 bg-transparent h-full placeholder:text-slate-400 px-2 text-base font-normal border-none focus:ring-0"
+                        placeholder="Buscar por detalle, banco o nota..." oninput="applyIngresosFilters()" />
+                </div>
+            </label>
+        </div>
+        <!-- Filter chips -->
+        <div class="flex gap-3 flex-wrap items-center">
+            <select id="filter-member-ingresos"
+                class="h-9 px-4 rounded-lg border border-border-light dark:border-transparent bg-surface-light dark:bg-[#282e39] text-sm font-medium"
+                onchange="applyIngresosFilters()">
+                <option value="all">Miembro: Todos</option>
+            </select>
+            <select id="filter-month-ingresos"
+                class="h-9 px-4 rounded-lg border border-border-light dark:border-transparent bg-surface-light dark:bg-[#282e39] text-sm font-medium"
+                onchange="applyIngresosFilters()">
+                <option value="all">Mes: Todos</option>
+            </select>
+            <select id="filter-year-ingresos"
+                class="h-9 px-4 rounded-lg border border-border-light dark:border-transparent bg-surface-light dark:bg-[#282e39] text-sm font-medium"
+                onchange="applyIngresosFilters()">
+                <option value="all">Año: Todos</option>
+            </select>
+            <select id="filter-bank-ingresos"
+                class="h-9 px-4 rounded-lg border border-border-light dark:border-transparent bg-surface-light dark:bg-[#282e39] text-sm font-medium"
+                onchange="applyIngresosFilters()">
+                <option value="all">Banco: Todos</option>
+            </select>
+            <select id="filter-category-ingresos"
+                class="h-9 px-4 rounded-lg border border-border-light dark:border-transparent bg-surface-light dark:bg-[#282e39] text-sm font-medium"
+                onchange="applyIngresosFilters()">
+                <option value="all">Fuente: Todas</option>
+            </select>
+            <div class="ml-auto flex items-center gap-3">
+                <div
+                    class="hidden sm:flex items-center gap-2 px-3 py-1 bg-white dark:bg-[#1c212b] rounded-lg border border-border-light dark:border-border-dark shadow-sm">
+                    <span class="text-xs font-medium text-slate-500">Total:</span>
+                    <span id="ingresos-filtered-total"
+                        class="text-sm font-bold text-slate-900 dark:text-white">$0</span>
+                </div>
+                <span id="ingresos-count" class="text-sm text-slate-500 font-medium">0 resultados</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Table -->
+    <div
+        class="flex flex-col gap-4 rounded-xl border border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark overflow-hidden shadow-sm">
+        <!-- Data Table -->
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-gray-50 dark:bg-[#232936] border-b border-border-light dark:border-border-dark">
+                        <th class="py-4 px-6 text-xs font-semibold uppercase tracking-wider text-slate-500">
+                            Fecha</th>
+                        <th class="py-4 px-6 text-xs font-semibold uppercase tracking-wider text-slate-500">
+                            Miembro</th>
+                        <th class="py-4 px-6 text-xs font-semibold uppercase tracking-wider text-slate-500">
+                            Fuente</th>
+                        <th class="py-4 px-6 text-xs font-semibold uppercase tracking-wider text-slate-500">
+                            Cuenta Destino</th>
+                        <th class="py-4 px-6 text-xs font-semibold uppercase tracking-wider text-slate-500 text-right">
+                            Monto</th>
+                    </tr>
+                </thead>
+                <tbody id="table-ingresos-body" class="divide-y divide-border-light dark:divide-border-dark">
+                    <!-- Populated by JS -->
+                </tbody>
+            </table>
+        </div>
+        <!-- Pagination -->
+        <div
+            class="flex items-center justify-between border-t border-border-light dark:border-border-dark bg-slate-50 dark:bg-[#1c212b] px-4 py-3">
+            <p id="ingresos-pagination-info" class="text-sm text-slate-500">Mostrando 0 resultados</p>
+            <div class="flex gap-2">
+                <button id="ingresos-prev"
+                    class="rounded border border-border-light dark:border-border-dark bg-surface-light dark:bg-[#282e39] px-3 py-1 text-sm font-medium hover:bg-slate-50 dark:hover:bg-[#323945] disabled:opacity-50"
+                    disabled>Anterior</button>
+                <button id="ingresos-next"
+                    class="rounded border border-border-light dark:border-border-dark bg-surface-light dark:bg-[#282e39] px-3 py-1 text-sm font-medium hover:bg-slate-50 dark:hover:bg-[#323945]">Siguiente</button>
+            </div>
+        </div>
+    </div>
+    </section>
+
+    <!-- ==================== CARGAR ARCHIVOS VIEW ==================== -->
+    <section id="section-cargar" class="view-section">
+        <div class="max-w-[1000px] mx-auto flex flex-col gap-8">
+            <!-- Header -->
+            <div class="flex flex-col gap-2">
+                <h1 class="text-3xl font-bold tracking-tight">Cargar Extractos Bancarios</h1>
+                <p class="text-slate-500 dark:text-slate-400">Sube tus archivos Excel o CSV para actualizar tus
+                    finanzas y mantener el control de tu presupuesto.</p>
+            </div>
+
+            <!-- Selectors -->
+            <div class="grid grid-cols-1 gap-6">
+                <label class="flex flex-col gap-2">
+                    <span class="text-sm font-semibold">Miembro de la Familia</span>
+                    <div class="relative">
+                        <select id="upload-member"
+                            class="w-full appearance-none rounded-lg border border-border-light dark:border-border-dark bg-surface-light dark:bg-[#1c1f27] h-12 px-4 pr-10 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all">
+                            <option disabled selected value="">Seleccionar miembro</option>
+                            <option value="isa">Isa</option>
+                            <option value="sebas">Sebas</option>
+                            <option value="fabio">Fabio</option>
+                        </select>
+                        <span class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
+                            <span class="material-symbols-outlined">expand_more</span>
+                        </span>
+                    </div>
+                </label>
+                <p class="text-sm text-slate-500">El banco se detecta automáticamente desde la columna "Banco"
+                    del archivo Excel.</p>
+            </div>
+
+            <!-- Upload Zone -->
+            <div id="upload-zone"
+                class="group relative flex flex-col items-center justify-center w-full rounded-xl border-2 border-dashed border-slate-300 dark:border-[#3b4354] bg-slate-50 dark:bg-[#151a25] hover:bg-slate-100 dark:hover:bg-[#1c2333] hover:border-primary/50 transition-all duration-300 py-16 px-4 cursor-pointer">
+                <div class="flex flex-col items-center gap-4 text-center">
+                    <div
+                        class="size-16 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-2 group-hover:scale-110 transition-transform">
+                        <span class="material-symbols-outlined text-4xl">cloud_upload</span>
+                    </div>
+                    <div class="space-y-1">
+                        <p class="text-lg font-bold">Arrastra y suelta tu archivo aquí</p>
+                        <p class="text-slate-500 dark:text-slate-400 text-sm">Soporta formatos .CSV y .XLSX (Máx
+                            5MB)</p>
+                    </div>
+                    <button type="button"
+                        class="mt-4 px-6 py-2.5 rounded-lg bg-primary hover:bg-blue-600 text-white font-bold text-sm shadow-lg shadow-primary/25 transition-all">
+                        Seleccionar Archivo
+                    </button>
+                </div>
+                <input id="file-input" accept=".csv, .xlsx, .xls" class="absolute inset-0 opacity-0 cursor-pointer"
+                    type="file" />
+            </div>
+
+            <!-- Recent Uploads -->
+            <div class="flex flex-col gap-4">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-xl font-bold">Cargas Recientes</h3>
+                    <button class="text-primary text-sm font-semibold hover:underline">Ver todo el
+                        historial</button>
+                </div>
+                <div
+                    class="w-full overflow-hidden rounded-xl border border-border-light dark:border-border-dark bg-surface-light dark:bg-[#151a25] shadow-sm">
                     <div class="overflow-x-auto">
-                        <table class="w-full text-left border-collapse">
-                            <thead>
-                                <tr
-                                    class="bg-gray-50 dark:bg-[#232936] border-b border-border-light dark:border-border-dark">
-                                    <th class="py-4 px-6 text-xs font-semibold uppercase tracking-wider text-slate-500">
-                                        Fecha</th>
-                                    <th class="py-4 px-6 text-xs font-semibold uppercase tracking-wider text-slate-500">
-                                        Miembro</th>
-                                    <th class="py-4 px-6 text-xs font-semibold uppercase tracking-wider text-slate-500">
-                                        Fuente</th>
-                                    <th class="py-4 px-6 text-xs font-semibold uppercase tracking-wider text-slate-500">
-                                        Cuenta Destino</th>
-                                    <th
-                                        class="py-4 px-6 text-xs font-semibold uppercase tracking-wider text-slate-500 text-right">
-                                        Monto</th>
+                        <table class="w-full text-left text-sm">
+                            <thead
+                                class="bg-slate-50 dark:bg-[#1c2333] border-b border-border-light dark:border-border-dark">
+                                <tr>
+                                    <th class="px-6 py-4 font-semibold text-slate-500">Nombre del Archivo</th>
+                                    <th class="px-6 py-4 font-semibold text-slate-500">Banco</th>
+                                    <th class="px-6 py-4 font-semibold text-slate-500">Fecha</th>
+                                    <th class="px-6 py-4 font-semibold text-slate-500">Miembro</th>
+                                    <th class="px-6 py-4 font-semibold text-slate-500 text-right">Estado</th>
                                 </tr>
                             </thead>
-                            <tbody id="table-ingresos-body"
+                            <tbody id="upload-history-body"
                                 class="divide-y divide-border-light dark:divide-border-dark">
-                                <!-- Populated by JS -->
+                                <tr>
+                                    <td colspan="5" class="px-6 py-8 text-center text-slate-500">No hay cargas
+                                        recientes</td>
+                                </tr>
                             </tbody>
                         </table>
                     </div>
-                    <!-- Pagination -->
-                    <div
-                        class="flex items-center justify-between border-t border-border-light dark:border-border-dark bg-slate-50 dark:bg-[#1c212b] px-4 py-3">
-                        <p id="ingresos-pagination-info" class="text-sm text-slate-500">Mostrando 0 resultados</p>
-                        <div class="flex gap-2">
-                            <button id="ingresos-prev"
-                                class="rounded border border-border-light dark:border-border-dark bg-surface-light dark:bg-[#282e39] px-3 py-1 text-sm font-medium hover:bg-slate-50 dark:hover:bg-[#323945] disabled:opacity-50"
-                                disabled>Anterior</button>
-                            <button id="ingresos-next"
-                                class="rounded border border-border-light dark:border-border-dark bg-surface-light dark:bg-[#282e39] px-3 py-1 text-sm font-medium hover:bg-slate-50 dark:hover:bg-[#323945]">Siguiente</button>
-                        </div>
-                    </div>
                 </div>
-            </section>
+            </div>
+        </div>
+    </section>
 
-            <!-- ==================== CARGAR ARCHIVOS VIEW ==================== -->
-            <section id="section-cargar" class="view-section">
-                <div class="max-w-[1000px] mx-auto flex flex-col gap-8">
-                    <!-- Header -->
-                    <div class="flex flex-col gap-2">
-                        <h1 class="text-3xl font-bold tracking-tight">Cargar Extractos Bancarios</h1>
-                        <p class="text-slate-500 dark:text-slate-400">Sube tus archivos Excel o CSV para actualizar tus
-                            finanzas y mantener el control de tu presupuesto.</p>
-                    </div>
-
-                    <!-- Selectors -->
-                    <div class="grid grid-cols-1 gap-6">
-                        <label class="flex flex-col gap-2">
-                            <span class="text-sm font-semibold">Miembro de la Familia</span>
-                            <div class="relative">
-                                <select id="upload-member"
-                                    class="w-full appearance-none rounded-lg border border-border-light dark:border-border-dark bg-surface-light dark:bg-[#1c1f27] h-12 px-4 pr-10 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all">
-                                    <option disabled selected value="">Seleccionar miembro</option>
-                                    <option value="isa">Isa</option>
-                                    <option value="sebas">Sebas</option>
-                                    <option value="fabio">Fabio</option>
-                                </select>
-                                <span
-                                    class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
-                                    <span class="material-symbols-outlined">expand_more</span>
-                                </span>
-                            </div>
-                        </label>
-                        <p class="text-sm text-slate-500">El banco se detecta automáticamente desde la columna "Banco"
-                            del archivo Excel.</p>
-                    </div>
-
-                    <!-- Upload Zone -->
-                    <div id="upload-zone"
-                        class="group relative flex flex-col items-center justify-center w-full rounded-xl border-2 border-dashed border-slate-300 dark:border-[#3b4354] bg-slate-50 dark:bg-[#151a25] hover:bg-slate-100 dark:hover:bg-[#1c2333] hover:border-primary/50 transition-all duration-300 py-16 px-4 cursor-pointer">
-                        <div class="flex flex-col items-center gap-4 text-center">
-                            <div
-                                class="size-16 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-2 group-hover:scale-110 transition-transform">
-                                <span class="material-symbols-outlined text-4xl">cloud_upload</span>
-                            </div>
-                            <div class="space-y-1">
-                                <p class="text-lg font-bold">Arrastra y suelta tu archivo aquí</p>
-                                <p class="text-slate-500 dark:text-slate-400 text-sm">Soporta formatos .CSV y .XLSX (Máx
-                                    5MB)</p>
-                            </div>
-                            <button type="button"
-                                class="mt-4 px-6 py-2.5 rounded-lg bg-primary hover:bg-blue-600 text-white font-bold text-sm shadow-lg shadow-primary/25 transition-all">
-                                Seleccionar Archivo
-                            </button>
-                        </div>
-                        <input id="file-input" accept=".csv, .xlsx, .xls"
-                            class="absolute inset-0 opacity-0 cursor-pointer" type="file" />
-                    </div>
-
-                    <!-- Recent Uploads -->
-                    <div class="flex flex-col gap-4">
-                        <div class="flex items-center justify-between">
-                            <h3 class="text-xl font-bold">Cargas Recientes</h3>
-                            <button class="text-primary text-sm font-semibold hover:underline">Ver todo el
-                                historial</button>
-                        </div>
-                        <div
-                            class="w-full overflow-hidden rounded-xl border border-border-light dark:border-border-dark bg-surface-light dark:bg-[#151a25] shadow-sm">
-                            <div class="overflow-x-auto">
-                                <table class="w-full text-left text-sm">
-                                    <thead
-                                        class="bg-slate-50 dark:bg-[#1c2333] border-b border-border-light dark:border-border-dark">
-                                        <tr>
-                                            <th class="px-6 py-4 font-semibold text-slate-500">Nombre del Archivo</th>
-                                            <th class="px-6 py-4 font-semibold text-slate-500">Banco</th>
-                                            <th class="px-6 py-4 font-semibold text-slate-500">Fecha</th>
-                                            <th class="px-6 py-4 font-semibold text-slate-500">Miembro</th>
-                                            <th class="px-6 py-4 font-semibold text-slate-500 text-right">Estado</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="upload-history-body"
-                                        class="divide-y divide-border-light dark:divide-border-dark">
-                                        <tr>
-                                            <td colspan="5" class="px-6 py-8 text-center text-slate-500">No hay cargas
-                                                recientes</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-        </main>
+    </main>
     </div>
 
     <!-- ==================== MODAL EDITAR CATEGORÍA ==================== -->
@@ -962,7 +933,7 @@
     <!-- Scripts -->
     <script src="js/config.js"></script>
     <script src="js/auth.js"></script>
-    <script src="js/app.js?v=4.8"></script>
+    <script src="js/app.js?v=4.9"></script>
 </body>
 
 </html>
