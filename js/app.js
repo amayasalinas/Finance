@@ -875,10 +875,12 @@ function renderAccounts() {
     const container = document.getElementById('accounts-list');
     if (!container) return;
 
-    // Extract unique banks from transactions
-    const bankBalances = {};
+    // Group by Bank + Member to show member ownership
+    const accountBalances = {};
     filteredTransactions.forEach(t => {
         const bank = t.Banco || 'Otro';
+        const member = t.Miembro || 'Desconocido';
+        const key = `${bank}|${member}`; // Unique key per bank+member
         const value = parseFloat(t.Valor) || 0;
         const isIncomeType = t.Tipo === 'Depósito' || t.Tipo === 'Transferencia Recibida';
 
@@ -893,30 +895,46 @@ function renderAccounts() {
         const isCreditCardPayment = hasAbonoKeyword && !isInterest;
 
         const isIncome = isIncomeType && !isCreditCardPayment;
-        bankBalances[bank] = (bankBalances[bank] || 0) + (isIncome ? value : -value);
+
+        if (!accountBalances[key]) {
+            accountBalances[key] = { bank, member, balance: 0 };
+        }
+        accountBalances[key].balance += (isIncome ? value : -value);
     });
 
-    const banks = Object.entries(bankBalances).slice(0, 4);
+    const accounts = Object.values(accountBalances).slice(0, 6);
 
-    if (banks.length === 0) {
+    if (accounts.length === 0) {
         container.innerHTML = '<p class="text-slate-500 text-sm">No hay cuentas para mostrar</p>';
         return;
     }
 
-    container.innerHTML = banks.map(([bank, balance]) => `
-    <div class="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-[#1c2333] hover:bg-slate-100 dark:hover:bg-[#232b3b] transition-colors cursor-pointer">
+    container.innerHTML = accounts.map(({ bank, member, balance }) => {
+        // Find member data for color/initials
+        const memberData = currentFamilyMembers.find(m =>
+            m.id === member || m.name.toLowerCase() === member.toLowerCase()
+        ) || { name: member, initials: member[0]?.toUpperCase() || '?', color: 'bg-gray-400' };
+
+        return `
+        <div class="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-[#1c2333] hover:bg-slate-100 dark:hover:bg-[#232b3b] transition-colors cursor-pointer">
             <div class="flex items-center gap-3">
                 <div class="flex items-center justify-center size-10 rounded-lg bg-primary/10 text-primary">
                     <span class="material-symbols-outlined">account_balance</span>
                 </div>
                 <div>
                     <p class="font-medium">${bank}</p>
-                    <p class="text-xs text-slate-500">Cuenta</p>
+                    <div class="flex items-center gap-1.5">
+                        <div class="size-4 rounded-full ${memberData.color} flex items-center justify-center">
+                            <span class="text-[8px] font-bold text-white">${memberData.initials}</span>
+                        </div>
+                        <p class="text-xs text-slate-500">${memberData.name}</p>
+                    </div>
                 </div>
             </div>
             <span class="font-bold ${balance >= 0 ? 'text-secondary' : 'text-danger'}">${formatCurrency(balance)}</span>
         </div>
-    `).join('');
+    `;
+    }).join('');
 }
 
 // Gastos Table

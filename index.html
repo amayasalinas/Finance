@@ -423,39 +423,9 @@
                     </div>
                 </div>
 
-                <!-- Bottom Grid: Family Income, Recent Transactions, Categories, Accounts -->
+                <!-- Bottom Grid: Categories and Accounts -->
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     <!-- LEFT COLUMN -->
-                    <div class="flex flex-col gap-6">
-                        <!-- Family Income -->
-                        <div
-                            class="bg-surface-light dark:bg-surface-dark rounded-xl p-6 border border-border-light dark:border-border-dark shadow-sm">
-                            <div class="flex items-center justify-between mb-6">
-                                <h2 class="text-lg font-bold">Ingresos Familiares</h2>
-                                <button class="text-sm font-medium text-primary hover:text-primary-dark">Ver
-                                    Metas</button>
-                            </div>
-                            <div id="family-income-list" class="flex flex-col gap-4">
-                                <!-- Populated by JS -->
-                            </div>
-                        </div>
-
-                        <!-- Recent Transactions -->
-                        <div
-                            class="bg-surface-light dark:bg-surface-dark rounded-xl p-6 border border-border-light dark:border-border-dark shadow-sm flex-1">
-                            <div class="flex items-center justify-between mb-4">
-                                <h2 class="text-lg font-bold">Transacciones Recientes</h2>
-                                <button
-                                    class="text-sm font-medium text-slate-500 dark:text-slate-400 hover:text-white transition-colors"
-                                    onclick="navigateTo('gastos')">Ver todas</button>
-                            </div>
-                            <div id="recent-transactions" class="space-y-4">
-                                <!-- Populated by JS -->
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- RIGHT COLUMN -->
                     <div class="flex flex-col gap-6">
                         <!-- Category Donut -->
                         <div
@@ -479,7 +449,10 @@
                                 </div>
                             </div>
                         </div>
+                    </div>
 
+                    <!-- RIGHT COLUMN -->
+                    <div class="flex flex-col gap-6">
                         <!-- My Accounts -->
                         <div
                             class="bg-surface-light dark:bg-surface-dark rounded-xl p-6 border border-border-light dark:border-border-dark shadow-sm flex-1">
@@ -989,7 +962,7 @@
     <!-- Scripts -->
     <script src="js/config.js"></script>
     <script src="js/auth.js"></script>
-    <script src="js/app.js?v=4.7"></script>
+    <script src="js/app.js?v=4.8"></script>
 </body>
 
 </html>
