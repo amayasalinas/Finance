@@ -955,6 +955,33 @@ function renderGastosTable() {
         totalElement.textContent = formatCurrency(totalFiltered);
     }
 
+    // Update KPI cards
+    const totalStatEl = document.getElementById('gastos-total-stat');
+    if (totalStatEl) {
+        totalStatEl.textContent = formatCurrency(totalFiltered);
+    }
+
+    // Find top category
+    const categoryTotals = {};
+    gastos.forEach(t => {
+        const cat = t.Categoria || 'Otros';
+        if (!categoryTotals[cat]) categoryTotals[cat] = 0;
+        categoryTotals[cat] += parseFloat(t.Valor) || 0;
+    });
+    const topCategory = Object.entries(categoryTotals).sort((a, b) => b[1] - a[1])[0];
+    const topCatEl = document.getElementById('gastos-top-category');
+    if (topCatEl && topCategory) {
+        topCatEl.textContent = topCategory[0];
+    }
+
+    // Calculate daily average
+    const uniqueDates = [...new Set(gastos.map(t => t.Fecha))];
+    const dailyAvg = uniqueDates.length > 0 ? totalFiltered / uniqueDates.length : 0;
+    const dailyAvgEl = document.getElementById('gastos-daily-avg');
+    if (dailyAvgEl) {
+        dailyAvgEl.textContent = formatCurrency(dailyAvg);
+    }
+
     // Render daily expenses chart with current filtered data
     renderDailyExpensesChart(gastos);
 
