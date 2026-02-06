@@ -505,6 +505,123 @@ function renderKPIs() {
 // Charts
 function renderCharts() {
     renderIncomeVsExpensesChart();
+    renderIncomeMembersChart();
+}
+
+// Income Members Donut Chart
+function renderIncomeMembersChart() {
+    const canvas = document.getElementById('chart-income-members');
+    const legendContainer = document.getElementById('income-members-legend');
+    if (!canvas || !legendContainer) return;
+
+    const ctx = canvas.getContext('2d');
+
+    // Filter income transactions
+    const ingresos = filteredTransactions.filter(t => {
+        const isIncomeType = t.Tipo === 'Depósito' || t.Tipo === 'Transferencia Recibida' ||
+            t.Tipo === 'Ingreso' || t.Tipo === 'Sueldo' || t.Tipo === 'Salario';
+
+        const hasAbonoKeyword = (t.Tipo && t.Tipo.toLowerCase().includes('abono')) ||
+            (t.Categoria && t.Categoria.toLowerCase().includes('abono')) ||
+            (t.Detalle && t.Detalle.toLowerCase().includes('abono'));
+
+        const isInterest = (t.Tipo && t.Tipo.toLowerCase().includes('interes')) ||
+            (t.Categoria && t.Categoria.toLowerCase().includes('interes')) ||
+            (t.Detalle && t.Detalle.toLowerCase().includes('interes'));
+
+        const isCreditCardPayment = hasAbonoKeyword && !isInterest;
+
+        return isIncomeType && !isCreditCardPayment;
+    });
+
+    // Group by member
+    const memberTotals = {};
+    ingresos.forEach(t => {
+        const member = t.Miembro || 'Desconocido';
+        if (!memberTotals[member]) memberTotals[member] = 0;
+        memberTotals[member] += Math.abs(parseFloat(t.Valor) || 0);
+    });
+
+    const labels = Object.keys(memberTotals);
+    const data = Object.values(memberTotals);
+    const total = data.reduce((sum, val) => sum + val, 0);
+
+    // Get member colors
+    const colors = labels.map(memberKey => {
+        const memberData = currentFamilyMembers.find(m =>
+            m.id === memberKey || m.name.toLowerCase() === memberKey.toLowerCase()
+        );
+        // Extract color from Tailwind class (e.g., "bg-blue-500" -> "rgb(59, 130, 246)")
+        const colorMap = {
+            'bg-blue-500': 'rgba(59, 130, 246, 0.8)',
+            'bg-green-500': 'rgba(34, 197, 94, 0.8)',
+            'bg-purple-500': 'rgba(168, 85, 247, 0.8)',
+            'bg-orange-500': 'rgba(249, 115, 22, 0.8)',
+            'bg-pink-500': 'rgba(236, 72, 153, 0.8)',
+            'bg-gray-400': 'rgba(156, 163, 175, 0.8)'
+        };
+        return memberData ? (colorMap[memberData.color] || 'rgba(156, 163, 175, 0.8)') : 'rgba(156, 163, 175, 0.8)';
+    });
+
+    // Destroy previous chart
+    if (charts['income-members']) {
+        charts['income-members'].destroy();
+    }
+
+    // Create donut chart
+    charts['income-members'] = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: data,
+                backgroundColor: colors,
+                borderWidth: 2,
+                borderColor: '#fff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function (context) {
+                            const value = context.parsed;
+                            const percentage = ((value / total) * 100).toFixed(1);
+                            return `${context.label}: ${formatCurrency(value)} (${percentage}%)`;
+                        }
+                    }
+                }
+            },
+            cutout: '70%'
+        }
+    });
+
+    // Render custom legend
+    legendContainer.innerHTML = labels.map((label, index) => {
+        const value = data[index];
+        const percentage = ((value / total) * 100).toFixed(1);
+        const memberData = currentFamilyMembers.find(m =>
+            m.id === label || m.name.toLowerCase() === label.toLowerCase()
+        ) || { name: label, initials: label[0]?.toUpperCase() || '?', color: 'bg-gray-400' };
+
+        return `
+            <div class="flex items-center justify-between gap-2">
+                <div class="flex items-center gap-2">
+                    <div class="size-3 rounded-full ${memberData.color}"></div>
+                    <span class="text-sm font-medium">${memberData.name}</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="text-sm font-bold">${formatCurrency(value)}</span>
+                    <span class="text-xs text-slate-500">(${percentage}%)</span>
+                </div>
+            </div>
+        `;
+    }).join('');
 }
 
 function renderIncomeVsExpensesChart() {

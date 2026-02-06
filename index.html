@@ -239,12 +239,6 @@
                             href="#" data-view="cargar">Cargar Archivos</a>
                     </nav>
                     <div class="flex items-center gap-3">
-                        <button
-                            class="flex items-center justify-center size-9 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-500 dark:text-slate-400 relative">
-                            <span class="material-symbols-outlined text-[20px]">notifications</span>
-                            <span
-                                class="absolute top-2 right-2 size-2 rounded-full bg-danger border-2 border-surface-light dark:border-surface-dark"></span>
-                        </button>
                         <button id="logout-btn"
                             class="flex items-center justify-center size-9 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
                             title="Cerrar Sesión">
@@ -665,10 +659,14 @@
                         class="rounded-xl p-6 border border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark flex flex-col h-full">
                         <div class="flex justify-between items-start mb-4">
                             <p class="font-bold">Distribución por Miembro</p>
-                            <button class="text-primary text-xs font-bold hover:underline">VER INFORME</button>
                         </div>
-                        <div class="flex-1 flex items-end justify-between gap-4 px-2 min-h-[120px]">
-                            <canvas id="chart-income-members"></canvas>
+                        <div class="flex flex-col sm:flex-row items-center gap-6 flex-1">
+                            <div class="relative size-40 shrink-0">
+                                <canvas id="chart-income-members"></canvas>
+                            </div>
+                            <div id="income-members-legend" class="flex flex-col gap-2 w-full">
+                                <!-- Populated by JS -->
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -938,7 +936,7 @@
     <!-- Scripts -->
     <script src="js/config.js"></script>
     <script src="js/auth.js"></script>
-    <script src="js/app.js?v=4.10"></script>
+    <script src="js/app.js?v=4.11"></script>
 </body>
 
 </html>
