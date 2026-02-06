@@ -317,360 +317,364 @@ function navigateTo(view) {
             link.classList.add('text-primary');
             link.classList.remove('text-slate-600', 'dark:text-slate-300');
         } else {
-            // Hide all sections
-            document.querySelectorAll('.view-section').forEach(section => {
-                section.classList.remove('active');
-            });
-
-            // Show target section
-            const targetSection = document.getElementById(`section-${view}`);
-            if (targetSection) {
-                targetSection.classList.add('active');
-                currentView = view;
-
-                // Scroll to top of page
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-
-                // Re-render if switching views that need fresh data
-                if (view === 'gastos') renderGastosTable();
-                else if (view === 'ingresos') renderIngresosTable();
-            }
+            link.classList.remove('text-primary');
+            link.classList.add('text-slate-600', 'dark:text-slate-300');
         }
+    });
 
-        // =========================================
-        // FILTERS
-        // =========================================
-        function setupFilters() {
-            // Period filter
-            const periodFilter = document.getElementById('period-filter');
-            if (periodFilter) {
-                periodFilter.addEventListener('change', () => {
-                    applyFilters();
-                    renderAll();
-                });
-            }
+    // Hide all sections
+    document.querySelectorAll('.view-section').forEach(section => {
+        section.classList.remove('active');
+    });
 
-            // Search gastos
-            const searchGastos = document.getElementById('search-gastos');
-            if (searchGastos) {
-                searchGastos.addEventListener('input', debounce(() => {
-                    applyFilters();
-                    renderGastosTable();
-                }, 300));
-            }
+    // Show target section
+    const targetSection = document.getElementById(`section-${view}`);
+    if (targetSection) {
+        targetSection.classList.add('active');
 
-            // Include Abono TC Toggle
-            const includeAbonoCheck = document.getElementById('include-abono-check');
-            if (includeAbonoCheck) {
-                includeAbonoCheck.addEventListener('change', () => {
-                    // Force re-render of all relevant sections
-                    renderKPIs();
-                    renderGastosTable();
-                    renderDailyExpensesChart();
-                    renderCategoryDonut();
-                    renderIncomeVsExpensesChart();
-                    fetchAIRecommendations();
-                });
-            }
+        // Scroll to top of page
+        window.scrollTo({ top: 0, behavior: 'smooth' });
 
-            // Clear filters
-            const clearBtn = document.getElementById('clear-filters-gastos');
-            if (clearBtn) {
-                clearBtn.addEventListener('click', () => {
-                    document.getElementById('search-gastos').value = '';
-                    document.getElementById('filter-member-gastos').value = 'all';
-                    document.getElementById('filter-bank-gastos').value = 'all';
-                    document.getElementById('filter-category-gastos').value = 'all';
-                    applyFilters();
-                    renderGastosTable();
-                });
-            }
+        // Re-render if switching views that need fresh data
+        if (view === 'gastos') renderGastosTable();
+        else if (view === 'ingresos') renderIngresosTable();
+    }
+}
 
-            // Pagination
-            document.getElementById('gastos-prev')?.addEventListener('click', () => changePage('gastos', -1));
-            document.getElementById('gastos-next')?.addEventListener('click', () => changePage('gastos', 1));
-            document.getElementById('ingresos-prev')?.addEventListener('click', () => changePage('ingresos', -1));
-            document.getElementById('ingresos-next')?.addEventListener('click', () => changePage('ingresos', 1));
-        }
+// =========================================
+// FILTERS
+// =========================================
+function setupFilters() {
+    // Period filter
+    const periodFilter = document.getElementById('period-filter');
+    if (periodFilter) {
+        periodFilter.addEventListener('change', () => {
+            applyFilters();
+            renderAll();
+        });
+    }
 
-        function applyFilters() {
-            const period = document.getElementById('period-filter')?.value || CONFIG.DEFAULT_PERIOD;
-            const now = new Date();
-            let startDate = new Date(0);
-            let endDate = new Date(now.getFullYear() + 1, 11, 31); // Default to far future
-
-            switch (period) {
-                case 'month':
-                    startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-                    endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0); // Last day of current month
-                    break;
-                case '3months':
-                    startDate = new Date(now.getFullYear(), now.getMonth() - 2, 1);
-                    break;
-                case '6months':
-                    startDate = new Date(now.getFullYear(), now.getMonth() - 5, 1);
-                    break;
-                case 'year':
-                    startDate = new Date(now.getFullYear(), 0, 1);
-                    endDate = new Date(now.getFullYear(), 11, 31);
-                    break;
-                case 'all':
-                default:
-                    startDate = new Date(0);
-            }
-
-            // Map selectedMembers (which are member IDs) to a set for quick lookup
-            const selectedMemberIds = new Set(selectedMembers);
-
-            filteredTransactions = allTransactions.filter(t => {
-                const date = new Date(t.Fecha);
-                const dateInRange = date >= startDate && date <= endDate;
-
-                // Filter by members if specific members are selected
-                // If selectedMembers is empty, it means "all members" are selected.
-                const memberMatch = selectedMemberIds.size === 0 || selectedMemberIds.has(t.Miembro);
-
-                // Fallback for legacy data where Miembro might be a name string instead of an ID
-                // This checks if the transaction's Miembro (name or ID) corresponds to any of the selected members.
-                const legacyMemberMatch = selectedMemberIds.size === 0 || currentFamilyMembers.some(m =>
-                    selectedMemberIds.has(m.id) && (m.id === t.Miembro || m.name.toLowerCase() === (t.Miembro || '').toLowerCase())
-                );
-
-                return dateInRange && (memberMatch || legacyMemberMatch);
-            });
-
-            // Reset pagination
-            pagination.gastos.page = 1;
-            pagination.ingresos.page = 1;
-        }
-
-        function changePage(type, delta) {
-            const pag = pagination[type];
-            const totalPages = Math.ceil(pag.total / pag.perPage);
-            const newPage = pag.page + delta;
-
-            if (newPage >= 1 && newPage <= totalPages) {
-                pag.page = newPage;
-                if (type === 'gastos') renderGastosTable();
-                else renderIngresosTable();
-            }
-        }
-
-        // =========================================
-        // RENDER FUNCTIONS
-        // =========================================
-        function renderAll() {
-            populateAdvancedFilters();
-            renderKPIs();
-            renderCharts();
-            renderRecentTransactions();
-            renderCategoryDonut();
-            renderFamilyIncome();
-            renderAccounts();
+    // Search gastos
+    const searchGastos = document.getElementById('search-gastos');
+    if (searchGastos) {
+        searchGastos.addEventListener('input', debounce(() => {
+            applyFilters();
             renderGastosTable();
-            renderIngresosTable();
-            fetchAIRecommendations();
-        }
+        }, 300));
+    }
 
-        // KPIs
-        function renderKPIs() {
-            // Include all common expense types (including Abono - credit card payments)
-            // Include all common expense types (including Abono - credit card payments)
-            const gastos = filteredTransactions.filter(t => {
-                const includeAbonoTC = document.getElementById('include-abono-check')?.checked ?? false;
-
-                const isExpenseType = t.Tipo === 'Compra' || t.Tipo === 'Retiro' || t.Tipo === 'Débito' ||
-                    t.Tipo === 'Gasto' || t.Tipo === 'Pago' || t.Tipo === 'Cargo'; // Removed 'Abono' from here to control it via toggle
-
-                // Check for Abono (Credit Card Payment) but EXCLUDE Interest/Yields
-                const hasAbonoKeyword = (t.Tipo && t.Tipo.toLowerCase().includes('abono')) ||
-                    (t.Categoria && t.Categoria.toLowerCase().includes('abono')) ||
-                    (t.Detalle && t.Detalle.toLowerCase().includes('abono'));
-
-                const isInterest = (t.Tipo && t.Tipo.toLowerCase().includes('interes')) ||
-                    (t.Categoria && t.Categoria.toLowerCase().includes('interes')) ||
-                    (t.Detalle && t.Detalle.toLowerCase().includes('interes'));
-
-                const isAbonoPayment = hasAbonoKeyword && !isInterest;
-
-                return isExpenseType || (includeAbonoTC && isAbonoPayment);
-            });
-
-            // Include all common income types (Abono excluded - TC payments are not income)
-            const ingresos = filteredTransactions.filter(t => {
-                // Base income types
-                const isIncomeType = t.Tipo === 'Depósito' || t.Tipo === 'Transferencia Recibida' ||
-                    t.Tipo === 'Ingreso' || t.Tipo === 'Sueldo' || t.Tipo === 'Salario';
-
-                // STRICT EXCLUSION: Any reference to Abono matches here
-                const hasAbonoKeyword = (t.Tipo && t.Tipo.toLowerCase().includes('abono')) ||
-                    (t.Categoria && t.Categoria.toLowerCase().includes('abono')) ||
-                    (t.Detalle && t.Detalle.toLowerCase().includes('abono'));
-
-                const isInterest = (t.Tipo && t.Tipo.toLowerCase().includes('interes')) ||
-                    (t.Categoria && t.Categoria.toLowerCase().includes('interes')) ||
-                    (t.Detalle && t.Detalle.toLowerCase().includes('interes'));
-
-                // It is a credit card payment (to exclude) ONLY if it says Abono AND is NOT interest
-                const isCreditCardPayment = hasAbonoKeyword && !isInterest;
-
-                // Must be income type AND NOT a credit card payment
-                return isIncomeType && !isCreditCardPayment;
-            });
-
-            const totalGastos = gastos.reduce((sum, t) => sum + (parseFloat(t.Valor) || 0), 0);
-            const totalIngresos = ingresos.reduce((sum, t) => sum + (parseFloat(t.Valor) || 0), 0);
-            const balance = totalIngresos - totalGastos;
-
-            // Update KPI values
-            const kpiBalance = document.getElementById('kpi-balance');
-            const kpiIncome = document.getElementById('kpi-income');
-            const kpiExpenses = document.getElementById('kpi-expenses');
-
-            if (kpiBalance) kpiBalance.textContent = formatCurrency(balance);
-            if (kpiIncome) kpiIncome.textContent = formatCurrency(totalIngresos);
-            if (kpiExpenses) kpiExpenses.textContent = formatCurrency(totalGastos);
-
-            // Update gastos view stats
-            const gastosTotal = document.getElementById('gastos-total-stat');
-            if (gastosTotal) gastosTotal.textContent = formatCurrency(totalGastos);
-
-            const daysInPeriod = getDaysInPeriod();
-            const dailyAvg = document.getElementById('gastos-daily-avg');
-            if (dailyAvg) dailyAvg.textContent = formatCurrency(totalGastos / daysInPeriod);
-
-            // Top category
-            const categorySums = {};
-            gastos.forEach(t => {
-                const cat = t.Categoria || 'Otros';
-                categorySums[cat] = (categorySums[cat] || 0) + Math.abs(parseFloat(t.Valor) || 0);
-            });
-            const topCategory = Object.entries(categorySums).sort((a, b) => b[1] - a[1])[0];
-            const topCatEl = document.getElementById('gastos-top-category');
-            if (topCatEl && topCategory) {
-                topCatEl.textContent = `${topCategory[0]} (${formatCurrency(topCategory[1])})`;
-            }
-
-            // Update ingresos view stats
-            const ingresosTotal = document.getElementById('ingresos-total-stat');
-            if (ingresosTotal) ingresosTotal.textContent = formatCurrency(totalIngresos);
-        }
-
-        // Charts
-        function renderCharts() {
+    // Include Abono TC Toggle
+    const includeAbonoCheck = document.getElementById('include-abono-check');
+    if (includeAbonoCheck) {
+        includeAbonoCheck.addEventListener('change', () => {
+            // Force re-render of all relevant sections
+            renderKPIs();
+            renderGastosTable();
+            renderDailyExpensesChart();
+            renderCategoryDonut();
             renderIncomeVsExpensesChart();
-            renderIncomeMembersChart();
-        }
+            fetchAIRecommendations();
+        });
+    }
 
-        // Income Members Donut Chart
-        function renderIncomeMembersChart() {
-            const canvas = document.getElementById('chart-income-members');
-            const legendContainer = document.getElementById('income-members-legend');
-            if (!canvas || !legendContainer) return;
+    // Clear filters
+    const clearBtn = document.getElementById('clear-filters-gastos');
+    if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+            document.getElementById('search-gastos').value = '';
+            document.getElementById('filter-member-gastos').value = 'all';
+            document.getElementById('filter-bank-gastos').value = 'all';
+            document.getElementById('filter-category-gastos').value = 'all';
+            applyFilters();
+            renderGastosTable();
+        });
+    }
 
-            const ctx = canvas.getContext('2d');
+    // Pagination
+    document.getElementById('gastos-prev')?.addEventListener('click', () => changePage('gastos', -1));
+    document.getElementById('gastos-next')?.addEventListener('click', () => changePage('gastos', 1));
+    document.getElementById('ingresos-prev')?.addEventListener('click', () => changePage('ingresos', -1));
+    document.getElementById('ingresos-next')?.addEventListener('click', () => changePage('ingresos', 1));
+}
 
-            // Filter income transactions
-            const ingresos = filteredTransactions.filter(t => {
-                const isIncomeType = t.Tipo === 'Depósito' || t.Tipo === 'Transferencia Recibida' ||
-                    t.Tipo === 'Ingreso' || t.Tipo === 'Sueldo' || t.Tipo === 'Salario';
+function applyFilters() {
+    const period = document.getElementById('period-filter')?.value || CONFIG.DEFAULT_PERIOD;
+    const now = new Date();
+    let startDate = new Date(0);
+    let endDate = new Date(now.getFullYear() + 1, 11, 31); // Default to far future
 
-                const hasAbonoKeyword = (t.Tipo && t.Tipo.toLowerCase().includes('abono')) ||
-                    (t.Categoria && t.Categoria.toLowerCase().includes('abono')) ||
-                    (t.Detalle && t.Detalle.toLowerCase().includes('abono'));
+    switch (period) {
+        case 'month':
+            startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+            endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0); // Last day of current month
+            break;
+        case '3months':
+            startDate = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+            break;
+        case '6months':
+            startDate = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+            break;
+        case 'year':
+            startDate = new Date(now.getFullYear(), 0, 1);
+            endDate = new Date(now.getFullYear(), 11, 31);
+            break;
+        case 'all':
+        default:
+            startDate = new Date(0);
+    }
 
-                const isInterest = (t.Tipo && t.Tipo.toLowerCase().includes('interes')) ||
-                    (t.Categoria && t.Categoria.toLowerCase().includes('interes')) ||
-                    (t.Detalle && t.Detalle.toLowerCase().includes('interes'));
+    // Map selectedMembers (which are member IDs) to a set for quick lookup
+    const selectedMemberIds = new Set(selectedMembers);
 
-                const isCreditCardPayment = hasAbonoKeyword && !isInterest;
+    filteredTransactions = allTransactions.filter(t => {
+        const date = new Date(t.Fecha);
+        const dateInRange = date >= startDate && date <= endDate;
 
-                return isIncomeType && !isCreditCardPayment;
-            });
+        // Filter by members if specific members are selected
+        // If selectedMembers is empty, it means "all members" are selected.
+        const memberMatch = selectedMemberIds.size === 0 || selectedMemberIds.has(t.Miembro);
 
-            // Group by member
-            const memberTotals = {};
-            ingresos.forEach(t => {
-                const memberId = t.Miembro || 'Desconocido';
-                if (!memberTotals[memberId]) memberTotals[memberId] = 0;
-                memberTotals[memberId] += Math.abs(parseFloat(t.Valor) || 0);
-            });
+        // Fallback for legacy data where Miembro might be a name string instead of an ID
+        // This checks if the transaction's Miembro (name or ID) corresponds to any of the selected members.
+        const legacyMemberMatch = selectedMemberIds.size === 0 || currentFamilyMembers.some(m =>
+            selectedMemberIds.has(m.id) && (m.id === t.Miembro || m.name.toLowerCase() === (t.Miembro || '').toLowerCase())
+        );
 
-            // Convert member IDs to names for labels
-            const memberIds = Object.keys(memberTotals);
-            const labels = memberIds.map(memberId => {
-                const memberData = currentFamilyMembers.find(m =>
-                    m.id === memberId || m.name.toLowerCase() === memberId.toLowerCase()
-                );
-                return memberData ? memberData.name : memberId;
-            });
+        return dateInRange && (memberMatch || legacyMemberMatch);
+    });
 
-            const data = Object.values(memberTotals);
-            const total = data.reduce((sum, val) => sum + val, 0);
+    // Reset pagination
+    pagination.gastos.page = 1;
+    pagination.ingresos.page = 1;
+}
 
-            // Get member colors
-            const colors = memberIds.map(memberId => {
-                const memberData = currentFamilyMembers.find(m =>
-                    m.id === memberId || m.name.toLowerCase() === memberId.toLowerCase()
-                );
-                // Extract color from Tailwind class
-                const colorMap = {
-                    'bg-blue-500': 'rgba(59, 130, 246, 0.8)',
-                    'bg-green-500': 'rgba(34, 197, 94, 0.8)',
-                    'bg-purple-500': 'rgba(168, 85, 247, 0.8)',
-                    'bg-orange-500': 'rgba(249, 115, 22, 0.8)',
-                    'bg-pink-500': 'rgba(236, 72, 153, 0.8)',
-                    'bg-gray-400': 'rgba(156, 163, 175, 0.8)'
-                };
-                return memberData ? (colorMap[memberData.color] || 'rgba(156, 163, 175, 0.8)') : 'rgba(156, 163, 175, 0.8)';
-            });
+function changePage(type, delta) {
+    const pag = pagination[type];
+    const totalPages = Math.ceil(pag.total / pag.perPage);
+    const newPage = pag.page + delta;
 
-            // Destroy previous chart
-            if (charts['income-members']) {
-                charts['income-members'].destroy();
-            }
+    if (newPage >= 1 && newPage <= totalPages) {
+        pag.page = newPage;
+        if (type === 'gastos') renderGastosTable();
+        else renderIngresosTable();
+    }
+}
 
-            // Create donut chart
-            charts['income-members'] = new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        data: data,
-                        backgroundColor: colors,
-                        borderWidth: 2,
-                        borderColor: '#fff'
-                    }]
+// =========================================
+// RENDER FUNCTIONS
+// =========================================
+function renderAll() {
+    populateAdvancedFilters();
+    renderKPIs();
+    renderCharts();
+    renderRecentTransactions();
+    renderCategoryDonut();
+    renderFamilyIncome();
+    renderAccounts();
+    renderGastosTable();
+    renderIngresosTable();
+    fetchAIRecommendations();
+}
+
+// KPIs
+function renderKPIs() {
+    // Include all common expense types (including Abono - credit card payments)
+    // Include all common expense types (including Abono - credit card payments)
+    const gastos = filteredTransactions.filter(t => {
+        const includeAbonoTC = document.getElementById('include-abono-check')?.checked ?? false;
+
+        const isExpenseType = t.Tipo === 'Compra' || t.Tipo === 'Retiro' || t.Tipo === 'Débito' ||
+            t.Tipo === 'Gasto' || t.Tipo === 'Pago' || t.Tipo === 'Cargo'; // Removed 'Abono' from here to control it via toggle
+
+        // Check for Abono (Credit Card Payment) but EXCLUDE Interest/Yields
+        const hasAbonoKeyword = (t.Tipo && t.Tipo.toLowerCase().includes('abono')) ||
+            (t.Categoria && t.Categoria.toLowerCase().includes('abono')) ||
+            (t.Detalle && t.Detalle.toLowerCase().includes('abono'));
+
+        const isInterest = (t.Tipo && t.Tipo.toLowerCase().includes('interes')) ||
+            (t.Categoria && t.Categoria.toLowerCase().includes('interes')) ||
+            (t.Detalle && t.Detalle.toLowerCase().includes('interes'));
+
+        const isAbonoPayment = hasAbonoKeyword && !isInterest;
+
+        return isExpenseType || (includeAbonoTC && isAbonoPayment);
+    });
+
+    // Include all common income types (Abono excluded - TC payments are not income)
+    const ingresos = filteredTransactions.filter(t => {
+        // Base income types
+        const isIncomeType = t.Tipo === 'Depósito' || t.Tipo === 'Transferencia Recibida' ||
+            t.Tipo === 'Ingreso' || t.Tipo === 'Sueldo' || t.Tipo === 'Salario';
+
+        // STRICT EXCLUSION: Any reference to Abono matches here
+        const hasAbonoKeyword = (t.Tipo && t.Tipo.toLowerCase().includes('abono')) ||
+            (t.Categoria && t.Categoria.toLowerCase().includes('abono')) ||
+            (t.Detalle && t.Detalle.toLowerCase().includes('abono'));
+
+        const isInterest = (t.Tipo && t.Tipo.toLowerCase().includes('interes')) ||
+            (t.Categoria && t.Categoria.toLowerCase().includes('interes')) ||
+            (t.Detalle && t.Detalle.toLowerCase().includes('interes'));
+
+        // It is a credit card payment (to exclude) ONLY if it says Abono AND is NOT interest
+        const isCreditCardPayment = hasAbonoKeyword && !isInterest;
+
+        // Must be income type AND NOT a credit card payment
+        return isIncomeType && !isCreditCardPayment;
+    });
+
+    const totalGastos = gastos.reduce((sum, t) => sum + (parseFloat(t.Valor) || 0), 0);
+    const totalIngresos = ingresos.reduce((sum, t) => sum + (parseFloat(t.Valor) || 0), 0);
+    const balance = totalIngresos - totalGastos;
+
+    // Update KPI values
+    const kpiBalance = document.getElementById('kpi-balance');
+    const kpiIncome = document.getElementById('kpi-income');
+    const kpiExpenses = document.getElementById('kpi-expenses');
+
+    if (kpiBalance) kpiBalance.textContent = formatCurrency(balance);
+    if (kpiIncome) kpiIncome.textContent = formatCurrency(totalIngresos);
+    if (kpiExpenses) kpiExpenses.textContent = formatCurrency(totalGastos);
+
+    // Update gastos view stats
+    const gastosTotal = document.getElementById('gastos-total-stat');
+    if (gastosTotal) gastosTotal.textContent = formatCurrency(totalGastos);
+
+    const daysInPeriod = getDaysInPeriod();
+    const dailyAvg = document.getElementById('gastos-daily-avg');
+    if (dailyAvg) dailyAvg.textContent = formatCurrency(totalGastos / daysInPeriod);
+
+    // Top category
+    const categorySums = {};
+    gastos.forEach(t => {
+        const cat = t.Categoria || 'Otros';
+        categorySums[cat] = (categorySums[cat] || 0) + Math.abs(parseFloat(t.Valor) || 0);
+    });
+    const topCategory = Object.entries(categorySums).sort((a, b) => b[1] - a[1])[0];
+    const topCatEl = document.getElementById('gastos-top-category');
+    if (topCatEl && topCategory) {
+        topCatEl.textContent = `${topCategory[0]} (${formatCurrency(topCategory[1])})`;
+    }
+
+    // Update ingresos view stats
+    const ingresosTotal = document.getElementById('ingresos-total-stat');
+    if (ingresosTotal) ingresosTotal.textContent = formatCurrency(totalIngresos);
+}
+
+// Charts
+function renderCharts() {
+    renderIncomeVsExpensesChart();
+    renderIncomeMembersChart();
+}
+
+// Income Members Donut Chart
+function renderIncomeMembersChart() {
+    const canvas = document.getElementById('chart-income-members');
+    const legendContainer = document.getElementById('income-members-legend');
+    if (!canvas || !legendContainer) return;
+
+    const ctx = canvas.getContext('2d');
+
+    // Filter income transactions
+    const ingresos = filteredTransactions.filter(t => {
+        const isIncomeType = t.Tipo === 'Depósito' || t.Tipo === 'Transferencia Recibida' ||
+            t.Tipo === 'Ingreso' || t.Tipo === 'Sueldo' || t.Tipo === 'Salario';
+
+        const hasAbonoKeyword = (t.Tipo && t.Tipo.toLowerCase().includes('abono')) ||
+            (t.Categoria && t.Categoria.toLowerCase().includes('abono')) ||
+            (t.Detalle && t.Detalle.toLowerCase().includes('abono'));
+
+        const isInterest = (t.Tipo && t.Tipo.toLowerCase().includes('interes')) ||
+            (t.Categoria && t.Categoria.toLowerCase().includes('interes')) ||
+            (t.Detalle && t.Detalle.toLowerCase().includes('interes'));
+
+        const isCreditCardPayment = hasAbonoKeyword && !isInterest;
+
+        return isIncomeType && !isCreditCardPayment;
+    });
+
+    // Group by member
+    const memberTotals = {};
+    ingresos.forEach(t => {
+        const memberId = t.Miembro || 'Desconocido';
+        if (!memberTotals[memberId]) memberTotals[memberId] = 0;
+        memberTotals[memberId] += Math.abs(parseFloat(t.Valor) || 0);
+    });
+
+    // Convert member IDs to names for labels
+    const memberIds = Object.keys(memberTotals);
+    const labels = memberIds.map(memberId => {
+        const memberData = currentFamilyMembers.find(m =>
+            m.id === memberId || m.name.toLowerCase() === memberId.toLowerCase()
+        );
+        return memberData ? memberData.name : memberId;
+    });
+
+    const data = Object.values(memberTotals);
+    const total = data.reduce((sum, val) => sum + val, 0);
+
+    // Get member colors
+    const colors = memberIds.map(memberId => {
+        const memberData = currentFamilyMembers.find(m =>
+            m.id === memberId || m.name.toLowerCase() === memberId.toLowerCase()
+        );
+        // Extract color from Tailwind class
+        const colorMap = {
+            'bg-blue-500': 'rgba(59, 130, 246, 0.8)',
+            'bg-green-500': 'rgba(34, 197, 94, 0.8)',
+            'bg-purple-500': 'rgba(168, 85, 247, 0.8)',
+            'bg-orange-500': 'rgba(249, 115, 22, 0.8)',
+            'bg-pink-500': 'rgba(236, 72, 153, 0.8)',
+            'bg-gray-400': 'rgba(156, 163, 175, 0.8)'
+        };
+        return memberData ? (colorMap[memberData.color] || 'rgba(156, 163, 175, 0.8)') : 'rgba(156, 163, 175, 0.8)';
+    });
+
+    // Destroy previous chart
+    if (charts['income-members']) {
+        charts['income-members'].destroy();
+    }
+
+    // Create donut chart
+    charts['income-members'] = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: data,
+                backgroundColor: colors,
+                borderWidth: 2,
+                borderColor: '#fff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    display: false
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    plugins: {
-                        legend: {
-                            display: false
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function (context) {
-                                    const value = context.parsed;
-                                    const percentage = ((value / total) * 100).toFixed(1);
-                                    return `${context.label}: ${formatCurrency(value)} (${percentage}%)`;
-                                }
-                            }
+                tooltip: {
+                    callbacks: {
+                        label: function (context) {
+                            const value = context.parsed;
+                            const percentage = ((value / total) * 100).toFixed(1);
+                            return `${context.label}: ${formatCurrency(value)} (${percentage}%)`;
                         }
-                    },
-                    cutout: '70%'
+                    }
                 }
-            });
+            },
+            cutout: '70%'
+        }
+    });
 
-            // Render custom legend (without percentage)
-            legendContainer.innerHTML = memberIds.map((memberId, index) => {
-                const value = data[index];
-                const memberData = currentFamilyMembers.find(m =>
-                    m.id === memberId || m.name.toLowerCase() === memberId.toLowerCase()
-                ) || { name: memberId, initials: memberId[0]?.toUpperCase() || '?', color: 'bg-gray-400' };
+    // Render custom legend (without percentage)
+    legendContainer.innerHTML = memberIds.map((memberId, index) => {
+        const value = data[index];
+        const memberData = currentFamilyMembers.find(m =>
+            m.id === memberId || m.name.toLowerCase() === memberId.toLowerCase()
+        ) || { name: memberId, initials: memberId[0]?.toUpperCase() || '?', color: 'bg-gray-400' };
 
-                return `
+        return `
             <div class="flex items-center justify-between gap-2">
                 <div class="flex items-center gap-2">
                     <div class="size-3 rounded-full ${memberData.color}"></div>
@@ -679,274 +683,274 @@ function navigateTo(view) {
                 <span class="text-sm font-bold">${formatCurrency(value)}</span>
             </div>
         `;
-            }).join('');
+    }).join('');
+}
+
+function renderIncomeVsExpensesChart() {
+    const ctx = document.getElementById('chart-income-vs-expenses');
+    if (!ctx) return;
+
+    // Destroy existing chart
+    if (charts.incomeVsExpenses) {
+        charts.incomeVsExpenses.destroy();
+    }
+
+    // Group by month
+    const monthlyData = {};
+    filteredTransactions.forEach(t => {
+        const date = new Date(t.Fecha);
+        const monthKey = `${date.getFullYear()} -${String(date.getMonth() + 1).padStart(2, '0')} `;
+        if (!monthlyData[monthKey]) {
+            monthlyData[monthKey] = { income: 0, expenses: 0 };
         }
+        const value = Math.abs(parseFloat(t.Valor) || 0);
+        // Income types (must match renderKPIs and table logic)
+        // Note: 'Abono' removed as TC payments are not income
+        const isIncomeType = t.Tipo === 'Depósito' ||
+            t.Tipo === 'Transferencia Recibida' ||
+            t.Tipo === 'Ingreso' ||
+            t.Tipo === 'Sueldo' ||
+            t.Tipo === 'Salario';
 
-        function renderIncomeVsExpensesChart() {
-            const ctx = document.getElementById('chart-income-vs-expenses');
-            if (!ctx) return;
+        const hasAbonoKeyword = (t.Tipo && t.Tipo.toLowerCase().includes('abono')) ||
+            (t.Categoria && t.Categoria.toLowerCase().includes('abono')) ||
+            (t.Detalle && t.Detalle.toLowerCase().includes('abono'));
 
-            // Destroy existing chart
-            if (charts.incomeVsExpenses) {
-                charts.incomeVsExpenses.destroy();
+        const isInterest = (t.Tipo && t.Tipo.toLowerCase().includes('interes')) ||
+            (t.Categoria && t.Categoria.toLowerCase().includes('interes')) ||
+            (t.Detalle && t.Detalle.toLowerCase().includes('interes'));
+
+        const isCreditCardPayment = hasAbonoKeyword && !isInterest;
+
+        const isIncome = isIncomeType && !isCreditCardPayment;
+
+        if (isIncome) {
+            monthlyData[monthKey].income += value;
+        } else {
+            // Expenses: Check toggle
+            const includeAbonoTC = document.getElementById('include-abono-check')?.checked ?? false;
+
+            // Check if it is a valid expense
+            const isExpenseType = t.Tipo === 'Compra' || t.Tipo === 'Retiro' || t.Tipo === 'Débito' ||
+                t.Tipo === 'Gasto' || t.Tipo === 'Pago' || t.Tipo === 'Cargo';
+
+            // It is an expense if it is standard expense OR (it is Abono Payment AND we want to include it)
+            if (isExpenseType || (includeAbonoTC && isCreditCardPayment)) {
+                monthlyData[monthKey].expenses += value;
             }
-
-            // Group by month
-            const monthlyData = {};
-            filteredTransactions.forEach(t => {
-                const date = new Date(t.Fecha);
-                const monthKey = `${date.getFullYear()} -${String(date.getMonth() + 1).padStart(2, '0')} `;
-                if (!monthlyData[monthKey]) {
-                    monthlyData[monthKey] = { income: 0, expenses: 0 };
-                }
-                const value = Math.abs(parseFloat(t.Valor) || 0);
-                // Income types (must match renderKPIs and table logic)
-                // Note: 'Abono' removed as TC payments are not income
-                const isIncomeType = t.Tipo === 'Depósito' ||
-                    t.Tipo === 'Transferencia Recibida' ||
-                    t.Tipo === 'Ingreso' ||
-                    t.Tipo === 'Sueldo' ||
-                    t.Tipo === 'Salario';
-
-                const hasAbonoKeyword = (t.Tipo && t.Tipo.toLowerCase().includes('abono')) ||
-                    (t.Categoria && t.Categoria.toLowerCase().includes('abono')) ||
-                    (t.Detalle && t.Detalle.toLowerCase().includes('abono'));
-
-                const isInterest = (t.Tipo && t.Tipo.toLowerCase().includes('interes')) ||
-                    (t.Categoria && t.Categoria.toLowerCase().includes('interes')) ||
-                    (t.Detalle && t.Detalle.toLowerCase().includes('interes'));
-
-                const isCreditCardPayment = hasAbonoKeyword && !isInterest;
-
-                const isIncome = isIncomeType && !isCreditCardPayment;
-
-                if (isIncome) {
-                    monthlyData[monthKey].income += value;
-                } else {
-                    // Expenses: Check toggle
-                    const includeAbonoTC = document.getElementById('include-abono-check')?.checked ?? false;
-
-                    // Check if it is a valid expense
-                    const isExpenseType = t.Tipo === 'Compra' || t.Tipo === 'Retiro' || t.Tipo === 'Débito' ||
-                        t.Tipo === 'Gasto' || t.Tipo === 'Pago' || t.Tipo === 'Cargo';
-
-                    // It is an expense if it is standard expense OR (it is Abono Payment AND we want to include it)
-                    if (isExpenseType || (includeAbonoTC && isCreditCardPayment)) {
-                        monthlyData[monthKey].expenses += value;
-                    }
-                }
-            });
-
-            const sortedMonths = Object.keys(monthlyData).sort();
-            const labels = sortedMonths.map(m => {
-                const [year, month] = m.split('-');
-                return new Date(year, month - 1).toLocaleDateString('es-CO', { month: 'short', year: '2-digit' });
-            });
-
-            charts.incomeVsExpenses = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels,
-                    datasets: [
-                        {
-                            label: 'Ingresos',
-                            data: sortedMonths.map(m => monthlyData[m].income),
-                            borderColor: CONFIG.CHART_COLORS.primary,
-                            backgroundColor: CONFIG.CHART_COLORS.primary + '20',
-                            fill: true,
-                            tension: 0.4
-                        },
-                        {
-                            label: 'Gastos',
-                            data: sortedMonths.map(m => monthlyData[m].expenses),
-                            borderColor: CONFIG.CHART_COLORS.danger,
-                            backgroundColor: CONFIG.CHART_COLORS.danger + '20',
-                            fill: true,
-                            tension: 0.4
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false }
-                    },
-                    scales: {
-                        x: { grid: { display: false } },
-                        y: {
-                            grid: { color: '#374151' },
-                            ticks: {
-                                callback: value => formatCurrencyShort(value)
-                            }
-                        }
-                    }
-                }
-            });
         }
+    });
 
-        // Daily Expenses Chart
-        function renderDailyExpensesChart(expenseData = null) {
-            const ctx = document.getElementById('chart-daily-expenses');
-            if (!ctx) return;
+    const sortedMonths = Object.keys(monthlyData).sort();
+    const labels = sortedMonths.map(m => {
+        const [year, month] = m.split('-');
+        return new Date(year, month - 1).toLocaleDateString('es-CO', { month: 'short', year: '2-digit' });
+    });
 
-            // Destroy existing chart
-            if (charts.dailyExpenses) {
-                charts.dailyExpenses.destroy();
-            }
-
-            // Use provided data or filter from global filteredTransactions
-            // Use provided data or filter from global filteredTransactions
-            const expenses = expenseData || filteredTransactions.filter(t => {
-                const includeAbonoTC = document.getElementById('include-abono-check')?.checked ?? false;
-
-                const isExpenseType = t.Tipo === 'Compra' || t.Tipo === 'Retiro' || t.Tipo === 'Débito' ||
-                    t.Tipo === 'Gasto' || t.Tipo === 'Pago' || t.Tipo === 'Cargo';
-
-                const hasAbonoKeyword = (t.Tipo && t.Tipo.toLowerCase().includes('abono')) ||
-                    (t.Categoria && t.Categoria.toLowerCase().includes('abono')) ||
-                    (t.Detalle && t.Detalle.toLowerCase().includes('abono'));
-
-                const isInterest = (t.Tipo && t.Tipo.toLowerCase().includes('interes')) ||
-                    (t.Categoria && t.Categoria.toLowerCase().includes('interes')) ||
-                    (t.Detalle && t.Detalle.toLowerCase().includes('interes'));
-
-                const isAbonoPayment = hasAbonoKeyword && !isInterest;
-
-                return isExpenseType || (includeAbonoTC && isAbonoPayment);
-            });
-
-            // Group by date (day level)
-            const dailyData = {};
-            expenses.forEach(t => {
-                const dateKey = t.Fecha; // Already in YYYY-MM-DD format
-                if (!dailyData[dateKey]) {
-                    dailyData[dateKey] = 0;
-                }
-                dailyData[dateKey] += Math.abs(parseFloat(t.Valor) || 0);
-            });
-
-            // Sort dates and prepare data
-            const sortedDates = Object.keys(dailyData).sort();
-            const labels = sortedDates.map(d => {
-                const date = new Date(d + 'T00:00:00'); // Avoid timezone issues
-                return date.toLocaleDateString('es-CO', { day: 'numeric', month: 'short' });
-            });
-            const data = sortedDates.map(d => dailyData[d]);
-
-            charts.dailyExpenses = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels,
-                    datasets: [{
-                        label: 'Gastos',
-                        data,
-                        borderColor: CONFIG.CHART_COLORS.danger,
-                        backgroundColor: CONFIG.CHART_COLORS.danger + '20',
-                        fill: true,
-                        tension: 0.4,
-                        pointRadius: 3,
-                        pointHoverRadius: 5
-                    }]
+    charts.incomeVsExpenses = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [
+                {
+                    label: 'Ingresos',
+                    data: sortedMonths.map(m => monthlyData[m].income),
+                    borderColor: CONFIG.CHART_COLORS.primary,
+                    backgroundColor: CONFIG.CHART_COLORS.primary + '20',
+                    fill: true,
+                    tension: 0.4
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            callbacks: {
-                                label: (context) => `Gasto: ${formatCurrency(context.parsed.y)} `
-                            }
-                        }
-                    },
-                    scales: {
-                        x: {
-                            grid: { display: false },
-                            ticks: { maxRotation: 45, minRotation: 45 }
-                        },
-                        y: {
-                            grid: { color: '#374151' },
-                            ticks: {
-                                callback: value => formatCurrencyShort(value)
-                            }
-                        }
+                {
+                    label: 'Gastos',
+                    data: sortedMonths.map(m => monthlyData[m].expenses),
+                    borderColor: CONFIG.CHART_COLORS.danger,
+                    backgroundColor: CONFIG.CHART_COLORS.danger + '20',
+                    fill: true,
+                    tension: 0.4
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                x: { grid: { display: false } },
+                y: {
+                    grid: { color: '#374151' },
+                    ticks: {
+                        callback: value => formatCurrencyShort(value)
                     }
                 }
-            });
+            }
         }
+    });
+}
 
-        function renderCategoryDonut() {
-            const ctx = document.getElementById('chart-categories-donut');
-            if (!ctx) return;
+// Daily Expenses Chart
+function renderDailyExpensesChart(expenseData = null) {
+    const ctx = document.getElementById('chart-daily-expenses');
+    if (!ctx) return;
 
-            if (charts.categoryDonut) {
-                charts.categoryDonut.destroy();
-            }
+    // Destroy existing chart
+    if (charts.dailyExpenses) {
+        charts.dailyExpenses.destroy();
+    }
 
-            const gastos = filteredTransactions.filter(t => {
-                const includeAbonoTC = document.getElementById('include-abono-check')?.checked ?? false;
+    // Use provided data or filter from global filteredTransactions
+    // Use provided data or filter from global filteredTransactions
+    const expenses = expenseData || filteredTransactions.filter(t => {
+        const includeAbonoTC = document.getElementById('include-abono-check')?.checked ?? false;
 
-                const isExpenseType = t.Tipo === 'Compra' || t.Tipo === 'Retiro' || t.Tipo === 'Débito' ||
-                    t.Tipo === 'Gasto' || t.Tipo === 'Pago' || t.Tipo === 'Cargo';
+        const isExpenseType = t.Tipo === 'Compra' || t.Tipo === 'Retiro' || t.Tipo === 'Débito' ||
+            t.Tipo === 'Gasto' || t.Tipo === 'Pago' || t.Tipo === 'Cargo';
 
-                const hasAbonoKeyword = (t.Tipo && t.Tipo.toLowerCase().includes('abono')) ||
-                    (t.Categoria && t.Categoria.toLowerCase().includes('abono')) ||
-                    (t.Detalle && t.Detalle.toLowerCase().includes('abono'));
+        const hasAbonoKeyword = (t.Tipo && t.Tipo.toLowerCase().includes('abono')) ||
+            (t.Categoria && t.Categoria.toLowerCase().includes('abono')) ||
+            (t.Detalle && t.Detalle.toLowerCase().includes('abono'));
 
-                const isInterest = (t.Tipo && t.Tipo.toLowerCase().includes('interes')) ||
-                    (t.Categoria && t.Categoria.toLowerCase().includes('interes')) ||
-                    (t.Detalle && t.Detalle.toLowerCase().includes('interes'));
+        const isInterest = (t.Tipo && t.Tipo.toLowerCase().includes('interes')) ||
+            (t.Categoria && t.Categoria.toLowerCase().includes('interes')) ||
+            (t.Detalle && t.Detalle.toLowerCase().includes('interes'));
 
-                const isAbonoPayment = hasAbonoKeyword && !isInterest;
+        const isAbonoPayment = hasAbonoKeyword && !isInterest;
 
-                return isExpenseType || (includeAbonoTC && isAbonoPayment);
-            });
-            const categorySums = {};
-            gastos.forEach(t => {
-                const cat = t.Categoria || 'Otros';
-                categorySums[cat] = (categorySums[cat] || 0) + Math.abs(parseFloat(t.Valor) || 0);
-            });
+        return isExpenseType || (includeAbonoTC && isAbonoPayment);
+    });
 
-            const sorted = Object.entries(categorySums).sort((a, b) => b[1] - a[1]).slice(0, 6);
-            const labels = sorted.map(([cat]) => cat);
-            const data = sorted.map(([, val]) => val);
-            const colors = [
-                CONFIG.CHART_COLORS.primary,
-                CONFIG.CHART_COLORS.secondary,
-                CONFIG.CHART_COLORS.danger,
-                CONFIG.CHART_COLORS.warning,
-                CONFIG.CHART_COLORS.purple,
-                CONFIG.CHART_COLORS.teal
-            ];
+    // Group by date (day level)
+    const dailyData = {};
+    expenses.forEach(t => {
+        const dateKey = t.Fecha; // Already in YYYY-MM-DD format
+        if (!dailyData[dateKey]) {
+            dailyData[dateKey] = 0;
+        }
+        dailyData[dateKey] += Math.abs(parseFloat(t.Valor) || 0);
+    });
 
-            const total = data.reduce((a, b) => a + b, 0);
-            document.getElementById('donut-total').textContent = formatCurrencyShort(total);
+    // Sort dates and prepare data
+    const sortedDates = Object.keys(dailyData).sort();
+    const labels = sortedDates.map(d => {
+        const date = new Date(d + 'T00:00:00'); // Avoid timezone issues
+        return date.toLocaleDateString('es-CO', { day: 'numeric', month: 'short' });
+    });
+    const data = sortedDates.map(d => dailyData[d]);
 
-            charts.categoryDonut = new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels,
-                    datasets: [{
-                        data,
-                        backgroundColor: colors,
-                        borderWidth: 0
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    cutout: '70%',
-                    plugins: {
-                        legend: { display: false }
+    charts.dailyExpenses = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [{
+                label: 'Gastos',
+                data,
+                borderColor: CONFIG.CHART_COLORS.danger,
+                backgroundColor: CONFIG.CHART_COLORS.danger + '20',
+                fill: true,
+                tension: 0.4,
+                pointRadius: 3,
+                pointHoverRadius: 5
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: (context) => `Gasto: ${formatCurrency(context.parsed.y)} `
                     }
                 }
-            });
+            },
+            scales: {
+                x: {
+                    grid: { display: false },
+                    ticks: { maxRotation: 45, minRotation: 45 }
+                },
+                y: {
+                    grid: { color: '#374151' },
+                    ticks: {
+                        callback: value => formatCurrencyShort(value)
+                    }
+                }
+            }
+        }
+    });
+}
 
-            // Update legend
-            const legendContainer = document.getElementById('category-legend');
-            if (legendContainer) {
-                legendContainer.innerHTML = sorted.map(([cat, val], i) => `
+function renderCategoryDonut() {
+    const ctx = document.getElementById('chart-categories-donut');
+    if (!ctx) return;
+
+    if (charts.categoryDonut) {
+        charts.categoryDonut.destroy();
+    }
+
+    const gastos = filteredTransactions.filter(t => {
+        const includeAbonoTC = document.getElementById('include-abono-check')?.checked ?? false;
+
+        const isExpenseType = t.Tipo === 'Compra' || t.Tipo === 'Retiro' || t.Tipo === 'Débito' ||
+            t.Tipo === 'Gasto' || t.Tipo === 'Pago' || t.Tipo === 'Cargo';
+
+        const hasAbonoKeyword = (t.Tipo && t.Tipo.toLowerCase().includes('abono')) ||
+            (t.Categoria && t.Categoria.toLowerCase().includes('abono')) ||
+            (t.Detalle && t.Detalle.toLowerCase().includes('abono'));
+
+        const isInterest = (t.Tipo && t.Tipo.toLowerCase().includes('interes')) ||
+            (t.Categoria && t.Categoria.toLowerCase().includes('interes')) ||
+            (t.Detalle && t.Detalle.toLowerCase().includes('interes'));
+
+        const isAbonoPayment = hasAbonoKeyword && !isInterest;
+
+        return isExpenseType || (includeAbonoTC && isAbonoPayment);
+    });
+    const categorySums = {};
+    gastos.forEach(t => {
+        const cat = t.Categoria || 'Otros';
+        categorySums[cat] = (categorySums[cat] || 0) + Math.abs(parseFloat(t.Valor) || 0);
+    });
+
+    const sorted = Object.entries(categorySums).sort((a, b) => b[1] - a[1]).slice(0, 6);
+    const labels = sorted.map(([cat]) => cat);
+    const data = sorted.map(([, val]) => val);
+    const colors = [
+        CONFIG.CHART_COLORS.primary,
+        CONFIG.CHART_COLORS.secondary,
+        CONFIG.CHART_COLORS.danger,
+        CONFIG.CHART_COLORS.warning,
+        CONFIG.CHART_COLORS.purple,
+        CONFIG.CHART_COLORS.teal
+    ];
+
+    const total = data.reduce((a, b) => a + b, 0);
+    document.getElementById('donut-total').textContent = formatCurrencyShort(total);
+
+    charts.categoryDonut = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels,
+            datasets: [{
+                data,
+                backgroundColor: colors,
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            cutout: '70%',
+            plugins: {
+                legend: { display: false }
+            }
+        }
+    });
+
+    // Update legend
+    const legendContainer = document.getElementById('category-legend');
+    if (legendContainer) {
+        legendContainer.innerHTML = sorted.map(([cat, val], i) => `
     <div class="flex items-center justify-between gap-2">
                 <div class="flex items-center gap-2">
                     <span class="size-3 rounded-full" style="background: ${colors[i]}"></span>
@@ -955,26 +959,26 @@ function navigateTo(view) {
                 <span class="text-sm text-slate-500 dark:text-slate-400">${formatCurrency(val)}</span>
             </div>
     `).join('');
-            }
-        }
+    }
+}
 
-        // Recent Transactions
-        function renderRecentTransactions() {
-            const container = document.getElementById('recent-transactions');
-            if (!container) return;
+// Recent Transactions
+function renderRecentTransactions() {
+    const container = document.getElementById('recent-transactions');
+    if (!container) return;
 
-            const recent = [...filteredTransactions]
-                .sort((a, b) => new Date(b.Fecha) - new Date(a.Fecha))
-                .slice(0, 5);
+    const recent = [...filteredTransactions]
+        .sort((a, b) => new Date(b.Fecha) - new Date(a.Fecha))
+        .slice(0, 5);
 
-            container.innerHTML = recent.map(t => {
-                const isExpense = t.Tipo === 'Compra' || t.Tipo === 'Retiro' || t.Tipo === 'Débito';
-                const value = parseFloat(t.Valor) || 0;
-                const icon = isExpense ? 'shopping_cart' : 'payments';
-                const valueClass = isExpense ? 'text-danger' : 'text-secondary';
-                const prefix = isExpense ? '-' : '+';
+    container.innerHTML = recent.map(t => {
+        const isExpense = t.Tipo === 'Compra' || t.Tipo === 'Retiro' || t.Tipo === 'Débito';
+        const value = parseFloat(t.Valor) || 0;
+        const icon = isExpense ? 'shopping_cart' : 'payments';
+        const valueClass = isExpense ? 'text-danger' : 'text-secondary';
+        const prefix = isExpense ? '-' : '+';
 
-                return `
+        return `
     <div class="flex items-center justify-between py-2">
                 <div class="flex items-center gap-3">
                     <div class="flex items-center justify-center size-10 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500">
@@ -988,42 +992,42 @@ function navigateTo(view) {
                 <span class="text-sm font-bold ${valueClass}">${prefix}${formatCurrency(Math.abs(value))}</span>
             </div>
     `;
-            }).join('');
-        }
+    }).join('');
+}
 
-        // Family Income
-        function renderFamilyIncome() {
-            const container = document.getElementById('family-income-list');
-            if (!container) return;
+// Family Income
+function renderFamilyIncome() {
+    const container = document.getElementById('family-income-list');
+    if (!container) return;
 
-            const ingresos = filteredTransactions.filter(t => {
-                const isIncomeType = t.Tipo === 'Depósito' || t.Tipo === 'Transferencia Recibida';
+    const ingresos = filteredTransactions.filter(t => {
+        const isIncomeType = t.Tipo === 'Depósito' || t.Tipo === 'Transferencia Recibida';
 
-                const hasAbonoKeyword = (t.Tipo && t.Tipo.toLowerCase().includes('abono')) ||
-                    (t.Categoria && t.Categoria.toLowerCase().includes('abono')) ||
-                    (t.Detalle && t.Detalle.toLowerCase().includes('abono'));
+        const hasAbonoKeyword = (t.Tipo && t.Tipo.toLowerCase().includes('abono')) ||
+            (t.Categoria && t.Categoria.toLowerCase().includes('abono')) ||
+            (t.Detalle && t.Detalle.toLowerCase().includes('abono'));
 
-                const isInterest = (t.Tipo && t.Tipo.toLowerCase().includes('interes')) ||
-                    (t.Categoria && t.Categoria.toLowerCase().includes('interes')) ||
-                    (t.Detalle && t.Detalle.toLowerCase().includes('interes'));
+        const isInterest = (t.Tipo && t.Tipo.toLowerCase().includes('interes')) ||
+            (t.Categoria && t.Categoria.toLowerCase().includes('interes')) ||
+            (t.Detalle && t.Detalle.toLowerCase().includes('interes'));
 
-                const isCreditCardPayment = hasAbonoKeyword && !isInterest;
+        const isCreditCardPayment = hasAbonoKeyword && !isInterest;
 
-                return isIncomeType && !isCreditCardPayment;
-            });
-            const totalIncome = ingresos.reduce((sum, t) => sum + Math.abs(parseFloat(t.Valor) || 0), 0);
+        return isIncomeType && !isCreditCardPayment;
+    });
+    const totalIncome = ingresos.reduce((sum, t) => sum + Math.abs(parseFloat(t.Valor) || 0), 0);
 
-            // Distribute total income among currentFamilyMembers for display purposes
-            const familyData = currentFamilyMembers.map((member, index) => {
-                // Simple distribution for demo, in real app this would be tracked per member
-                const incomeShare = totalIncome * (index === 0 ? 0.55 : 0.45); // Example distribution
-                const goalShare = totalIncome * (index === 0 ? 0.6 : 0.5); // Example goal
-                return { member, income: incomeShare, goal: goalShare };
-            });
+    // Distribute total income among currentFamilyMembers for display purposes
+    const familyData = currentFamilyMembers.map((member, index) => {
+        // Simple distribution for demo, in real app this would be tracked per member
+        const incomeShare = totalIncome * (index === 0 ? 0.55 : 0.45); // Example distribution
+        const goalShare = totalIncome * (index === 0 ? 0.6 : 0.5); // Example goal
+        return { member, income: incomeShare, goal: goalShare };
+    });
 
-            container.innerHTML = familyData.map(({ member, income, goal }) => {
-                const progress = Math.min((income / goal) * 100, 100);
-                return `
+    container.innerHTML = familyData.map(({ member, income, goal }) => {
+        const progress = Math.min((income / goal) * 100, 100);
+        return `
     <div class="p-4 rounded-xl bg-slate-50 dark:bg-[#1c2333] border border-slate-100 dark:border-slate-800">
                 <div class="flex items-center justify-between mb-3">
                     <div class="flex items-center gap-3">
@@ -1042,55 +1046,55 @@ function navigateTo(view) {
                 </div>
             </div>
     `;
-            }).join('');
+    }).join('');
+}
+
+// Accounts
+function renderAccounts() {
+    const container = document.getElementById('accounts-list');
+    if (!container) return;
+
+    // Group by Bank + Member to show member ownership
+    const accountBalances = {};
+    filteredTransactions.forEach(t => {
+        const bank = t.Banco || 'Otro';
+        const member = t.Miembro || 'Desconocido';
+        const key = `${bank}|${member}`; // Unique key per bank+member
+        const value = parseFloat(t.Valor) || 0;
+        const isIncomeType = t.Tipo === 'Depósito' || t.Tipo === 'Transferencia Recibida';
+
+        const hasAbonoKeyword = (t.Tipo && t.Tipo.toLowerCase().includes('abono')) ||
+            (t.Categoria && t.Categoria.toLowerCase().includes('abono')) ||
+            (t.Detalle && t.Detalle.toLowerCase().includes('abono'));
+
+        const isInterest = (t.Tipo && t.Tipo.toLowerCase().includes('interes')) ||
+            (t.Categoria && t.Categoria.toLowerCase().includes('interes')) ||
+            (t.Detalle && t.Detalle.toLowerCase().includes('interes'));
+
+        const isCreditCardPayment = hasAbonoKeyword && !isInterest;
+
+        const isIncome = isIncomeType && !isCreditCardPayment;
+
+        if (!accountBalances[key]) {
+            accountBalances[key] = { bank, member, balance: 0 };
         }
+        accountBalances[key].balance += (isIncome ? value : -value);
+    });
 
-        // Accounts
-        function renderAccounts() {
-            const container = document.getElementById('accounts-list');
-            if (!container) return;
+    const accounts = Object.values(accountBalances).slice(0, 6);
 
-            // Group by Bank + Member to show member ownership
-            const accountBalances = {};
-            filteredTransactions.forEach(t => {
-                const bank = t.Banco || 'Otro';
-                const member = t.Miembro || 'Desconocido';
-                const key = `${bank}|${member}`; // Unique key per bank+member
-                const value = parseFloat(t.Valor) || 0;
-                const isIncomeType = t.Tipo === 'Depósito' || t.Tipo === 'Transferencia Recibida';
+    if (accounts.length === 0) {
+        container.innerHTML = '<p class="text-slate-500 text-sm">No hay cuentas para mostrar</p>';
+        return;
+    }
 
-                const hasAbonoKeyword = (t.Tipo && t.Tipo.toLowerCase().includes('abono')) ||
-                    (t.Categoria && t.Categoria.toLowerCase().includes('abono')) ||
-                    (t.Detalle && t.Detalle.toLowerCase().includes('abono'));
+    container.innerHTML = accounts.map(({ bank, member, balance }) => {
+        // Find member data for color/initials
+        const memberData = currentFamilyMembers.find(m =>
+            m.id === member || m.name.toLowerCase() === member.toLowerCase()
+        ) || { name: member, initials: member[0]?.toUpperCase() || '?', color: 'bg-gray-400' };
 
-                const isInterest = (t.Tipo && t.Tipo.toLowerCase().includes('interes')) ||
-                    (t.Categoria && t.Categoria.toLowerCase().includes('interes')) ||
-                    (t.Detalle && t.Detalle.toLowerCase().includes('interes'));
-
-                const isCreditCardPayment = hasAbonoKeyword && !isInterest;
-
-                const isIncome = isIncomeType && !isCreditCardPayment;
-
-                if (!accountBalances[key]) {
-                    accountBalances[key] = { bank, member, balance: 0 };
-                }
-                accountBalances[key].balance += (isIncome ? value : -value);
-            });
-
-            const accounts = Object.values(accountBalances).slice(0, 6);
-
-            if (accounts.length === 0) {
-                container.innerHTML = '<p class="text-slate-500 text-sm">No hay cuentas para mostrar</p>';
-                return;
-            }
-
-            container.innerHTML = accounts.map(({ bank, member, balance }) => {
-                // Find member data for color/initials
-                const memberData = currentFamilyMembers.find(m =>
-                    m.id === member || m.name.toLowerCase() === member.toLowerCase()
-                ) || { name: member, initials: member[0]?.toUpperCase() || '?', color: 'bg-gray-400' };
-
-                return `
+        return `
         <div class="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-[#1c2333] hover:bg-slate-100 dark:hover:bg-[#232b3b] transition-colors cursor-pointer">
             <div class="flex items-center gap-3">
                 <div class="flex items-center justify-center size-10 rounded-lg bg-primary/10 text-primary">
@@ -1109,99 +1113,99 @@ function navigateTo(view) {
             <span class="font-bold ${balance >= 0 ? 'text-secondary' : 'text-danger'}">${formatCurrency(balance)}</span>
         </div>
     `;
-            }).join('');
-        }
+    }).join('');
+}
 
-        // Gastos Table
-        function renderGastosTable() {
-            const tbody = document.getElementById('table-gastos-body');
-            if (!tbody) return;
+// Gastos Table
+function renderGastosTable() {
+    const tbody = document.getElementById('table-gastos-body');
+    if (!tbody) return;
 
-            // Get all filter values
-            const filters = getGastosFilterValues();
+    // Get all filter values
+    const filters = getGastosFilterValues();
 
-            // Start with expense-type transactions from all (not just filtered by global period)
-            // Start with expense-type transactions from all (not just filtered by global period)
-            let gastos = allTransactions.filter(t => {
-                const includeAbonoTC = document.getElementById('include-abono-check')?.checked ?? false;
+    // Start with expense-type transactions from all (not just filtered by global period)
+    // Start with expense-type transactions from all (not just filtered by global period)
+    let gastos = allTransactions.filter(t => {
+        const includeAbonoTC = document.getElementById('include-abono-check')?.checked ?? false;
 
-                const isExpenseType = t.Tipo === 'Compra' || t.Tipo === 'Retiro' || t.Tipo === 'Débito' ||
-                    t.Tipo === 'Gasto' || t.Tipo === 'Pago' || t.Tipo === 'Cargo';
+        const isExpenseType = t.Tipo === 'Compra' || t.Tipo === 'Retiro' || t.Tipo === 'Débito' ||
+            t.Tipo === 'Gasto' || t.Tipo === 'Pago' || t.Tipo === 'Cargo';
 
-                const hasAbonoKeyword = (t.Tipo && t.Tipo.toLowerCase().includes('abono')) ||
-                    (t.Categoria && t.Categoria.toLowerCase().includes('abono')) ||
-                    (t.Detalle && t.Detalle.toLowerCase().includes('abono'));
+        const hasAbonoKeyword = (t.Tipo && t.Tipo.toLowerCase().includes('abono')) ||
+            (t.Categoria && t.Categoria.toLowerCase().includes('abono')) ||
+            (t.Detalle && t.Detalle.toLowerCase().includes('abono'));
 
-                // Robust interest check
-                const isInterest = (t.Tipo && t.Tipo.toLowerCase().includes('interes')) ||
-                    (t.Categoria && t.Categoria.toLowerCase().includes('interes')) ||
-                    (t.Detalle && t.Detalle.toLowerCase().includes('interes'));
+        // Robust interest check
+        const isInterest = (t.Tipo && t.Tipo.toLowerCase().includes('interes')) ||
+            (t.Categoria && t.Categoria.toLowerCase().includes('interes')) ||
+            (t.Detalle && t.Detalle.toLowerCase().includes('interes'));
 
-                const isAbonoPayment = hasAbonoKeyword && !isInterest;
+        const isAbonoPayment = hasAbonoKeyword && !isInterest;
 
-                return isExpenseType || (includeAbonoTC && isAbonoPayment);
-            });
+        return isExpenseType || (includeAbonoTC && isAbonoPayment);
+    });
 
-            // Apply advanced filters
-            gastos = filterByAdvancedCriteria(gastos, filters);
+    // Apply advanced filters
+    gastos = filterByAdvancedCriteria(gastos, filters);
 
-            // Calculate total for filtered expenses
-            const totalFiltered = gastos.reduce((sum, t) => sum + (parseFloat(t.Valor) || 0), 0);
-            const totalElement = document.getElementById('gastos-filtered-total');
-            if (totalElement) {
-                totalElement.textContent = formatCurrency(totalFiltered);
-            }
+    // Calculate total for filtered expenses
+    const totalFiltered = gastos.reduce((sum, t) => sum + (parseFloat(t.Valor) || 0), 0);
+    const totalElement = document.getElementById('gastos-filtered-total');
+    if (totalElement) {
+        totalElement.textContent = formatCurrency(totalFiltered);
+    }
 
-            // Update KPI cards
-            const totalStatEl = document.getElementById('gastos-total-stat');
-            if (totalStatEl) {
-                totalStatEl.textContent = formatCurrency(totalFiltered);
-            }
+    // Update KPI cards
+    const totalStatEl = document.getElementById('gastos-total-stat');
+    if (totalStatEl) {
+        totalStatEl.textContent = formatCurrency(totalFiltered);
+    }
 
-            // Find top category
-            const categoryTotals = {};
-            gastos.forEach(t => {
-                const cat = t.Categoria || 'Otros';
-                if (!categoryTotals[cat]) categoryTotals[cat] = 0;
-                categoryTotals[cat] += parseFloat(t.Valor) || 0;
-            });
-            const topCategory = Object.entries(categoryTotals).sort((a, b) => b[1] - a[1])[0];
-            const topCatEl = document.getElementById('gastos-top-category');
-            if (topCatEl && topCategory) {
-                topCatEl.textContent = topCategory[0];
-            }
+    // Find top category
+    const categoryTotals = {};
+    gastos.forEach(t => {
+        const cat = t.Categoria || 'Otros';
+        if (!categoryTotals[cat]) categoryTotals[cat] = 0;
+        categoryTotals[cat] += parseFloat(t.Valor) || 0;
+    });
+    const topCategory = Object.entries(categoryTotals).sort((a, b) => b[1] - a[1])[0];
+    const topCatEl = document.getElementById('gastos-top-category');
+    if (topCatEl && topCategory) {
+        topCatEl.textContent = topCategory[0];
+    }
 
-            // Calculate daily average
-            const uniqueDates = [...new Set(gastos.map(t => t.Fecha))];
-            const dailyAvg = uniqueDates.length > 0 ? totalFiltered / uniqueDates.length : 0;
-            const dailyAvgEl = document.getElementById('gastos-daily-avg');
-            if (dailyAvgEl) {
-                dailyAvgEl.textContent = formatCurrency(dailyAvg);
-            }
+    // Calculate daily average
+    const uniqueDates = [...new Set(gastos.map(t => t.Fecha))];
+    const dailyAvg = uniqueDates.length > 0 ? totalFiltered / uniqueDates.length : 0;
+    const dailyAvgEl = document.getElementById('gastos-daily-avg');
+    if (dailyAvgEl) {
+        dailyAvgEl.textContent = formatCurrency(dailyAvg);
+    }
 
-            // Render daily expenses chart with current filtered data
-            renderDailyExpensesChart(gastos);
+    // Render daily expenses chart with current filtered data
+    renderDailyExpensesChart(gastos);
 
-            // Sort by date descending
-            gastos.sort((a, b) => parseDateString(b.Fecha) - parseDateString(a.Fecha));
+    // Sort by date descending
+    gastos.sort((a, b) => parseDateString(b.Fecha) - parseDateString(a.Fecha));
 
-            // Pagination
-            pagination.gastos.total = gastos.length;
-            const start = (pagination.gastos.page - 1) * pagination.gastos.perPage;
-            const pageData = gastos.slice(start, start + pagination.gastos.perPage);
+    // Pagination
+    pagination.gastos.total = gastos.length;
+    const start = (pagination.gastos.page - 1) * pagination.gastos.perPage;
+    const pageData = gastos.slice(start, start + pagination.gastos.perPage);
 
-            tbody.innerHTML = pageData.map((t, pageIndex) => {
-                const catColors = CONFIG.CATEGORY_COLORS[t.Categoria] || CONFIG.CATEGORY_COLORS['Otros'];
-                // Find Dynamic Member
-                const memberData = currentFamilyMembers.find(m => m.id === t.Miembro || m.name.toLowerCase() === (t.Miembro || '').toLowerCase()) ||
-                    { id: '?', name: t.Miembro || 'Desc.', initials: (t.Miembro || '?')[0].toUpperCase(), color: 'bg-gray-400' };
+    tbody.innerHTML = pageData.map((t, pageIndex) => {
+        const catColors = CONFIG.CATEGORY_COLORS[t.Categoria] || CONFIG.CATEGORY_COLORS['Otros'];
+        // Find Dynamic Member
+        const memberData = currentFamilyMembers.find(m => m.id === t.Miembro || m.name.toLowerCase() === (t.Miembro || '').toLowerCase()) ||
+            { id: '?', name: t.Miembro || 'Desc.', initials: (t.Miembro || '?')[0].toUpperCase(), color: 'bg-gray-400' };
 
-                // Calcular índice global en allTransactions
-                const globalIndex = allTransactions.findIndex(tx =>
-                    tx.Fecha === t.Fecha && tx.Valor === t.Valor && tx.Detalle === t.Detalle
-                );
+        // Calcular índice global en allTransactions
+        const globalIndex = allTransactions.findIndex(tx =>
+            tx.Fecha === t.Fecha && tx.Valor === t.Valor && tx.Detalle === t.Detalle
+        );
 
-                return `
+        return `
     <tr class="hover:bg-slate-50 dark:hover:bg-[#1f2633] transition-colors">
                 <td class="px-6 py-4 whitespace-nowrap">${formatDate(t.Fecha)}</td>
                 <td class="px-6 py-4 whitespace-nowrap">
@@ -1226,110 +1230,110 @@ function navigateTo(view) {
                 <td class="px-6 py-4 whitespace-nowrap text-right font-bold text-danger">-${formatCurrency(Math.abs(parseFloat(t.Valor) || 0))}</td>
             </tr>
     `;
-            }).join('');
+    }).join('');
 
-            // Update pagination info
-            const info = document.getElementById('gastos-pagination-info');
-            if (info) {
-                const end = Math.min(start + pagination.gastos.perPage, pagination.gastos.total);
-                info.textContent = `Mostrando ${start + 1} a ${end} de ${pagination.gastos.total} resultados`;
-            }
+    // Update pagination info
+    const info = document.getElementById('gastos-pagination-info');
+    if (info) {
+        const end = Math.min(start + pagination.gastos.perPage, pagination.gastos.total);
+        info.textContent = `Mostrando ${start + 1} a ${end} de ${pagination.gastos.total} resultados`;
+    }
 
-            // Update pagination buttons
-            document.getElementById('gastos-prev').disabled = pagination.gastos.page <= 1;
-            document.getElementById('gastos-next').disabled = start + pagination.gastos.perPage >= pagination.gastos.total;
-        }
+    // Update pagination buttons
+    document.getElementById('gastos-prev').disabled = pagination.gastos.page <= 1;
+    document.getElementById('gastos-next').disabled = start + pagination.gastos.perPage >= pagination.gastos.total;
+}
 
-        // Ingresos Table
-        function renderIngresosTable() {
-            const tbody = document.getElementById('table-ingresos-body');
-            if (!tbody) return;
+// Ingresos Table
+function renderIngresosTable() {
+    const tbody = document.getElementById('table-ingresos-body');
+    if (!tbody) return;
 
-            // Get all filter values
-            const filters = getIngresosFilterValues();
+    // Get all filter values
+    const filters = getIngresosFilterValues();
 
-            // Start with income-type transactions from all (Abono excluded - TC payments are not income)
-            let ingresos = allTransactions.filter(t => {
-                const isIncomeType = t.Tipo === 'Depósito' || t.Tipo === 'Transferencia Recibida' ||
-                    t.Tipo === 'Ingreso' || t.Tipo === 'Sueldo' || t.Tipo === 'Salario';
-                // Exclude any transaction with 'Abono' in Tipo, Categoria, or Detalle
-                const hasAbonoKeyword = (t.Tipo && t.Tipo.toLowerCase().includes('abono')) ||
-                    (t.Categoria && t.Categoria.toLowerCase().includes('abono')) ||
-                    (t.Detalle && t.Detalle.toLowerCase().includes('abono'));
+    // Start with income-type transactions from all (Abono excluded - TC payments are not income)
+    let ingresos = allTransactions.filter(t => {
+        const isIncomeType = t.Tipo === 'Depósito' || t.Tipo === 'Transferencia Recibida' ||
+            t.Tipo === 'Ingreso' || t.Tipo === 'Sueldo' || t.Tipo === 'Salario';
+        // Exclude any transaction with 'Abono' in Tipo, Categoria, or Detalle
+        const hasAbonoKeyword = (t.Tipo && t.Tipo.toLowerCase().includes('abono')) ||
+            (t.Categoria && t.Categoria.toLowerCase().includes('abono')) ||
+            (t.Detalle && t.Detalle.toLowerCase().includes('abono'));
 
-                const isInterest = (t.Tipo && t.Tipo.toLowerCase().includes('interes')) ||
-                    (t.Categoria && t.Categoria.toLowerCase().includes('interes')) ||
-                    (t.Detalle && t.Detalle.toLowerCase().includes('interes'));
+        const isInterest = (t.Tipo && t.Tipo.toLowerCase().includes('interes')) ||
+            (t.Categoria && t.Categoria.toLowerCase().includes('interes')) ||
+            (t.Detalle && t.Detalle.toLowerCase().includes('interes'));
 
-                // It is a credit card payment (to exclude) ONLY if it says Abono AND is NOT interest
-                const isCreditCardPayment = hasAbonoKeyword && !isInterest;
+        // It is a credit card payment (to exclude) ONLY if it says Abono AND is NOT interest
+        const isCreditCardPayment = hasAbonoKeyword && !isInterest;
 
-                return isIncomeType && !isCreditCardPayment;
-            });
+        return isIncomeType && !isCreditCardPayment;
+    });
 
-            // Apply advanced filters
-            ingresos = filterByAdvancedCriteria(ingresos, filters);
+    // Apply advanced filters
+    ingresos = filterByAdvancedCriteria(ingresos, filters);
 
-            // Calculate total for filtered income
-            const totalFiltered = ingresos.reduce((sum, t) => sum + (parseFloat(t.Valor) || 0), 0);
-            const totalElement = document.getElementById('ingresos-filtered-total');
-            if (totalElement) {
-                totalElement.textContent = formatCurrency(totalFiltered);
-            }
+    // Calculate total for filtered income
+    const totalFiltered = ingresos.reduce((sum, t) => sum + (parseFloat(t.Valor) || 0), 0);
+    const totalElement = document.getElementById('ingresos-filtered-total');
+    if (totalElement) {
+        totalElement.textContent = formatCurrency(totalFiltered);
+    }
 
-            // Update KPI cards
-            const totalStatEl = document.getElementById('ingresos-total-stat');
-            if (totalStatEl) {
-                totalStatEl.textContent = formatCurrency(totalFiltered);
-            }
+    // Update KPI cards
+    const totalStatEl = document.getElementById('ingresos-total-stat');
+    if (totalStatEl) {
+        totalStatEl.textContent = formatCurrency(totalFiltered);
+    }
 
-            // Calculate average per member
-            const memberTotals = {};
-            ingresos.forEach(t => {
-                const member = t.Miembro || 'Desconocido';
-                if (!memberTotals[member]) memberTotals[member] = 0;
-                memberTotals[member] += parseFloat(t.Valor) || 0;
-            });
-            const avgPerMember = Object.keys(memberTotals).length > 0
-                ? totalFiltered / Object.keys(memberTotals).length
-                : 0;
-            const avgMemberEl = document.getElementById('ingresos-avg-member');
-            if (avgMemberEl) {
-                avgMemberEl.textContent = formatCurrency(avgPerMember);
-            }
+    // Calculate average per member
+    const memberTotals = {};
+    ingresos.forEach(t => {
+        const member = t.Miembro || 'Desconocido';
+        if (!memberTotals[member]) memberTotals[member] = 0;
+        memberTotals[member] += parseFloat(t.Valor) || 0;
+    });
+    const avgPerMember = Object.keys(memberTotals).length > 0
+        ? totalFiltered / Object.keys(memberTotals).length
+        : 0;
+    const avgMemberEl = document.getElementById('ingresos-avg-member');
+    if (avgMemberEl) {
+        avgMemberEl.textContent = formatCurrency(avgPerMember);
+    }
 
-            // Find top source (category)
-            const categoryTotals = {};
-            ingresos.forEach(t => {
-                const cat = t.Categoria || t.Tipo || 'Otros';
-                if (!categoryTotals[cat]) categoryTotals[cat] = 0;
-                categoryTotals[cat] += parseFloat(t.Valor) || 0;
-            });
-            const topSource = Object.entries(categoryTotals).sort((a, b) => b[1] - a[1])[0];
-            const topSourceEl = document.getElementById('ingresos-top-source');
-            if (topSourceEl && topSource) {
-                topSourceEl.textContent = topSource[0];
-            }
+    // Find top source (category)
+    const categoryTotals = {};
+    ingresos.forEach(t => {
+        const cat = t.Categoria || t.Tipo || 'Otros';
+        if (!categoryTotals[cat]) categoryTotals[cat] = 0;
+        categoryTotals[cat] += parseFloat(t.Valor) || 0;
+    });
+    const topSource = Object.entries(categoryTotals).sort((a, b) => b[1] - a[1])[0];
+    const topSourceEl = document.getElementById('ingresos-top-source');
+    if (topSourceEl && topSource) {
+        topSourceEl.textContent = topSource[0];
+    }
 
-            // Sort by date descending
-            ingresos.sort((a, b) => parseDateString(b.Fecha) - parseDateString(a.Fecha));
+    // Sort by date descending
+    ingresos.sort((a, b) => parseDateString(b.Fecha) - parseDateString(a.Fecha));
 
-            // Pagination
-            pagination.ingresos.total = ingresos.length;
-            const start = (pagination.ingresos.page - 1) * pagination.ingresos.perPage;
-            const pageData = ingresos.slice(start, start + pagination.ingresos.perPage);
+    // Pagination
+    pagination.ingresos.total = ingresos.length;
+    const start = (pagination.ingresos.page - 1) * pagination.ingresos.perPage;
+    const pageData = ingresos.slice(start, start + pagination.ingresos.perPage);
 
-            tbody.innerHTML = pageData.map((t, pageIndex) => {
-                const sourceColors = CONFIG.CATEGORY_COLORS[t.Categoria] || CONFIG.CATEGORY_COLORS['Sueldo'];
-                // Buscar miembro real de la transacción (Dinámico)
-                const memberData = currentFamilyMembers.find(m => m.id === t.Miembro || m.name.toLowerCase() === (t.Miembro || '').toLowerCase()) ||
-                    { id: '?', name: t.Miembro || 'Desc.', initials: (t.Miembro || '?')[0].toUpperCase(), color: 'bg-gray-400' };
-                // Calcular índice global en allTransactions
-                const globalIndex = allTransactions.findIndex(tx =>
-                    tx.Fecha === t.Fecha && tx.Valor === t.Valor && tx.Detalle === t.Detalle
-                );
+    tbody.innerHTML = pageData.map((t, pageIndex) => {
+        const sourceColors = CONFIG.CATEGORY_COLORS[t.Categoria] || CONFIG.CATEGORY_COLORS['Sueldo'];
+        // Buscar miembro real de la transacción (Dinámico)
+        const memberData = currentFamilyMembers.find(m => m.id === t.Miembro || m.name.toLowerCase() === (t.Miembro || '').toLowerCase()) ||
+            { id: '?', name: t.Miembro || 'Desc.', initials: (t.Miembro || '?')[0].toUpperCase(), color: 'bg-gray-400' };
+        // Calcular índice global en allTransactions
+        const globalIndex = allTransactions.findIndex(tx =>
+            tx.Fecha === t.Fecha && tx.Valor === t.Valor && tx.Detalle === t.Detalle
+        );
 
-                return `
+        return `
     <tr class="hover:bg-gray-50 dark:hover:bg-[#232936] transition-colors">
                 <td class="py-4 px-6 text-sm font-medium whitespace-nowrap">${formatDate(t.Fecha)}</td>
                 <td class="py-4 px-6">
@@ -1350,88 +1354,88 @@ function navigateTo(view) {
                 </td>
             </tr>
     `;
-            }).join('');
+    }).join('');
 
-            // Update pagination info
-            const info = document.getElementById('ingresos-pagination-info');
-            if (info) {
-                const end = Math.min(start + pagination.ingresos.perPage, pagination.ingresos.total);
-                info.textContent = `Mostrando ${start + 1} a ${end} de ${pagination.ingresos.total} resultados`;
-            }
+    // Update pagination info
+    const info = document.getElementById('ingresos-pagination-info');
+    if (info) {
+        const end = Math.min(start + pagination.ingresos.perPage, pagination.ingresos.total);
+        info.textContent = `Mostrando ${start + 1} a ${end} de ${pagination.ingresos.total} resultados`;
+    }
 
-            // Update result count in filter bar
-            const countEl = document.getElementById('ingresos-count');
-            if (countEl) {
-                countEl.textContent = `${ingresos.length} resultado${ingresos.length !== 1 ? 's' : ''}`;
-            }
+    // Update result count in filter bar
+    const countEl = document.getElementById('ingresos-count');
+    if (countEl) {
+        countEl.textContent = `${ingresos.length} resultado${ingresos.length !== 1 ? 's' : ''}`;
+    }
 
-            // Update pagination buttons
-            document.getElementById('ingresos-prev').disabled = pagination.ingresos.page <= 1;
-            document.getElementById('ingresos-next').disabled = start + pagination.ingresos.perPage >= pagination.ingresos.total;
-        }
+    // Update pagination buttons
+    document.getElementById('ingresos-prev').disabled = pagination.ingresos.page <= 1;
+    document.getElementById('ingresos-next').disabled = start + pagination.ingresos.perPage >= pagination.ingresos.total;
+}
 
-        // =========================================
-        // AI RECOMMENDATIONS (Gemini)
-        // =========================================
-        async function fetchAIRecommendations() {
-            const container = document.getElementById('ai-recommendations');
-            if (!container) return;
+// =========================================
+// AI RECOMMENDATIONS (Gemini)
+// =========================================
+async function fetchAIRecommendations() {
+    const container = document.getElementById('ai-recommendations');
+    if (!container) return;
 
-            container.innerHTML = `
+    container.innerHTML = `
     <div class="p-4 rounded-xl bg-gradient-to-br from-slate-50 to-blue-50/50 dark:from-slate-800/50 dark:to-blue-900/20 border border-slate-100 dark:border-slate-800">
         <p class="text-sm text-slate-500 dark:text-slate-400 animate-pulse">✨ Analizando tus finanzas...</p>
         </div>
     `;
 
-            // Calculate summary data
-            const gastos = filteredTransactions.filter(t => {
-                const includeAbonoTC = document.getElementById('include-abono-check')?.checked ?? false;
+    // Calculate summary data
+    const gastos = filteredTransactions.filter(t => {
+        const includeAbonoTC = document.getElementById('include-abono-check')?.checked ?? false;
 
-                const isExpenseType = t.Tipo === 'Compra' || t.Tipo === 'Retiro' || t.Tipo === 'Débito' ||
-                    t.Tipo === 'Gasto' || t.Tipo === 'Pago' || t.Tipo === 'Cargo';
+        const isExpenseType = t.Tipo === 'Compra' || t.Tipo === 'Retiro' || t.Tipo === 'Débito' ||
+            t.Tipo === 'Gasto' || t.Tipo === 'Pago' || t.Tipo === 'Cargo';
 
-                const hasAbonoKeyword = (t.Tipo && t.Tipo.toLowerCase().includes('abono')) ||
-                    (t.Categoria && t.Categoria.toLowerCase().includes('abono')) ||
-                    (t.Detalle && t.Detalle.toLowerCase().includes('abono'));
+        const hasAbonoKeyword = (t.Tipo && t.Tipo.toLowerCase().includes('abono')) ||
+            (t.Categoria && t.Categoria.toLowerCase().includes('abono')) ||
+            (t.Detalle && t.Detalle.toLowerCase().includes('abono'));
 
-                const isInterest = (t.Tipo && t.Tipo.toLowerCase().includes('interes')) ||
-                    (t.Categoria && t.Categoria.toLowerCase().includes('interes')) ||
-                    (t.Detalle && t.Detalle.toLowerCase().includes('interes'));
+        const isInterest = (t.Tipo && t.Tipo.toLowerCase().includes('interes')) ||
+            (t.Categoria && t.Categoria.toLowerCase().includes('interes')) ||
+            (t.Detalle && t.Detalle.toLowerCase().includes('interes'));
 
-                const isAbonoPayment = hasAbonoKeyword && !isInterest;
+        const isAbonoPayment = hasAbonoKeyword && !isInterest;
 
-                return isExpenseType || (includeAbonoTC && isAbonoPayment);
-            });
+        return isExpenseType || (includeAbonoTC && isAbonoPayment);
+    });
 
 
 
-            const ingresos = filteredTransactions.filter(t => {
-                const isIncomeType = t.Tipo === 'Depósito' || t.Tipo === 'Transferencia Recibida';
+    const ingresos = filteredTransactions.filter(t => {
+        const isIncomeType = t.Tipo === 'Depósito' || t.Tipo === 'Transferencia Recibida';
 
-                const hasAbonoKeyword = (t.Tipo && t.Tipo.toLowerCase().includes('abono')) ||
-                    (t.Categoria && t.Categoria.toLowerCase().includes('abono')) ||
-                    (t.Detalle && t.Detalle.toLowerCase().includes('abono'));
+        const hasAbonoKeyword = (t.Tipo && t.Tipo.toLowerCase().includes('abono')) ||
+            (t.Categoria && t.Categoria.toLowerCase().includes('abono')) ||
+            (t.Detalle && t.Detalle.toLowerCase().includes('abono'));
 
-                const isInterest = (t.Tipo && t.Tipo.toLowerCase().includes('interes')) ||
-                    (t.Categoria && t.Categoria.toLowerCase().includes('interes')) ||
-                    (t.Detalle && t.Detalle.toLowerCase().includes('interes'));
+        const isInterest = (t.Tipo && t.Tipo.toLowerCase().includes('interes')) ||
+            (t.Categoria && t.Categoria.toLowerCase().includes('interes')) ||
+            (t.Detalle && t.Detalle.toLowerCase().includes('interes'));
 
-                const isCreditCardPayment = hasAbonoKeyword && !isInterest;
+        const isCreditCardPayment = hasAbonoKeyword && !isInterest;
 
-                return isIncomeType && !isCreditCardPayment;
-            });
-            const totalGastos = gastos.reduce((sum, t) => sum + Math.abs(parseFloat(t.Valor) || 0), 0);
-            const totalIngresos = ingresos.reduce((sum, t) => sum + Math.abs(parseFloat(t.Valor) || 0), 0);
+        return isIncomeType && !isCreditCardPayment;
+    });
+    const totalGastos = gastos.reduce((sum, t) => sum + Math.abs(parseFloat(t.Valor) || 0), 0);
+    const totalIngresos = ingresos.reduce((sum, t) => sum + Math.abs(parseFloat(t.Valor) || 0), 0);
 
-            // Get top categories
-            const categorySpend = {};
-            gastos.forEach(t => {
-                const cat = t.Categoria || 'Otros';
-                categorySpend[cat] = (categorySpend[cat] || 0) + Math.abs(parseFloat(t.Valor) || 0);
-            });
-            const topCategories = Object.entries(categorySpend).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    // Get top categories
+    const categorySpend = {};
+    gastos.forEach(t => {
+        const cat = t.Categoria || 'Otros';
+        categorySpend[cat] = (categorySpend[cat] || 0) + Math.abs(parseFloat(t.Valor) || 0);
+    });
+    const topCategories = Object.entries(categorySpend).sort((a, b) => b[1] - a[1]).slice(0, 5);
 
-            const prompt = `Eres un asesor financiero familiar experto.Analiza estos datos y da 3 recomendaciones CORTAS(máximo 2 líneas cada una) y ACCIONABLES:
+    const prompt = `Eres un asesor financiero familiar experto.Analiza estos datos y da 3 recomendaciones CORTAS(máximo 2 líneas cada una) y ACCIONABLES:
 
 Ingresos del mes: $${totalIngresos.toLocaleString()}
 Gastos del mes: $${totalGastos.toLocaleString()}
@@ -1440,31 +1444,31 @@ Gastos por categoría: ${topCategories.map(([cat, val]) => `${cat}: $${val.toLoc
 
 Responde en español, con emojis, formato: "1. [emoji] [consejo corto]" para cada recomendación.`;
 
-            try {
-                const response = await fetch(`${CONFIG.GEMINI_API_URL}?key = ${CONFIG.GEMINI_API_KEY} `, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        contents: [{ parts: [{ text: prompt }] }]
-                    })
-                });
+    try {
+        const response = await fetch(`${CONFIG.GEMINI_API_URL}?key = ${CONFIG.GEMINI_API_KEY} `, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contents: [{ parts: [{ text: prompt }] }]
+            })
+        });
 
-                if (response.ok) {
-                    const data = await response.json();
-                    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || 'No se pudo obtener recomendaciones.';
+        if (response.ok) {
+            const data = await response.json();
+            const text = data.candidates?.[0]?.content?.parts?.[0]?.text || 'No se pudo obtener recomendaciones.';
 
-                    const recommendations = text.split('\n').filter(line => line.trim().match(/^\d\./));
-                    container.innerHTML = recommendations.map(rec => `
+            const recommendations = text.split('\n').filter(line => line.trim().match(/^\d\./));
+            container.innerHTML = recommendations.map(rec => `
     <div class="p-4 rounded-xl bg-gradient-to-br from-slate-50 to-blue-50/50 dark:from-slate-800/50 dark:to-blue-900/20 border border-slate-100 dark:border-slate-800">
         <p class="text-sm">${rec.replace(/^\d\.\s*/, '')}</p>
                 </div>
     `).join('');
-                } else {
-                    throw new Error('API error');
-                }
-            } catch (error) {
-                console.error('AI Recommendations error:', error);
-                container.innerHTML = `
+        } else {
+            throw new Error('API error');
+        }
+    } catch (error) {
+        console.error('AI Recommendations error:', error);
+        container.innerHTML = `
     <div class="p-4 rounded-xl bg-gradient-to-br from-slate-50 to-blue-50/50 dark:from-slate-800/50 dark:to-blue-900/20 border border-slate-100 dark:border-slate-800">
         <p class="text-sm">💡 Mantén un ahorro del 20% de tus ingresos mensuales.</p>
             </div>
@@ -1472,241 +1476,241 @@ Responde en español, con emojis, formato: "1. [emoji] [consejo corto]" para cad
         <p class="text-sm">📊 Revisa tus gastos por categoría para identificar oportunidades.</p>
     </div>
 `;
-            }
+    }
 
-            // Setup refresh button
-            const refreshBtn = document.getElementById('refresh-ai-btn');
-            if (refreshBtn) {
-                refreshBtn.onclick = fetchAIRecommendations;
+    // Setup refresh button
+    const refreshBtn = document.getElementById('refresh-ai-btn');
+    if (refreshBtn) {
+        refreshBtn.onclick = fetchAIRecommendations;
+    }
+}
+
+// =========================================
+// FILE UPLOAD
+// =========================================
+function setupFileUpload() {
+    const fileInput = document.getElementById('file-input');
+    const uploadZone = document.getElementById('upload-zone');
+
+    if (fileInput) {
+        fileInput.addEventListener('change', handleFileSelect);
+    }
+
+    if (uploadZone) {
+        uploadZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadZone.classList.add('border-primary', 'bg-primary/5');
+        });
+
+        uploadZone.addEventListener('dragleave', () => {
+            uploadZone.classList.remove('border-primary', 'bg-primary/5');
+        });
+
+        uploadZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadZone.classList.remove('border-primary', 'bg-primary/5');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
             }
+        });
+    }
+}
+
+function handleFileSelect(e) {
+    const file = e.target.files[0];
+    if (file) handleFile(file);
+}
+
+async function handleFile(file) {
+    const member = document.getElementById('upload-member')?.value;
+
+    if (!member) {
+        showNotification('Por favor selecciona un miembro de la familia', 'warning');
+        return;
+    }
+
+    console.log(`📁 Processing file: ${file.name} for member: ${member} `);
+
+    // Add to upload history (processing state)
+    addUploadHistory(file.name, 'Detectando...', member, 'processing');
+
+    try {
+        const data = await file.arrayBuffer();
+        const workbook = XLSX.read(data, { type: 'array' });
+
+        // Get the first sheet
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+
+        // Convert to JSON
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+        if (jsonData.length < 2) {
+            throw new Error('El archivo está vacío o no tiene datos');
         }
 
-        // =========================================
-        // FILE UPLOAD
-        // =========================================
-        function setupFileUpload() {
-            const fileInput = document.getElementById('file-input');
-            const uploadZone = document.getElementById('upload-zone');
+        // Get header row (first row)
+        const headers = jsonData[0].map(h => String(h).toLowerCase().trim());
+        console.log('📋 Headers found:', headers);
 
-            if (fileInput) {
-                fileInput.addEventListener('change', handleFileSelect);
+        // Map common column names (including banco)
+        const columnMap = {
+            fecha: headers.findIndex(h => h.includes('fecha') || h.includes('date')),
+            tipo: headers.findIndex(h => h.includes('tipo') || h.includes('type') || h.includes('naturaleza') || h.includes('movimiento')),
+            valor: headers.findIndex(h => h.includes('valor') || h.includes('monto') || h.includes('amount') || h.includes('importe')),
+            categoria: headers.findIndex(h => h.includes('categoria') || h.includes('category')),
+            detalle: headers.findIndex(h => h.includes('detalle') || h.includes('descripcion') || h.includes('description') || h.includes('concepto')),
+            producto: headers.findIndex(h => h.includes('producto') || h.includes('cuenta') || h.includes('product')),
+            banco: headers.findIndex(h => h.includes('banco') || h.includes('bank') || h.includes('entidad'))
+        };
+
+        console.log('🗺️ Column mapping:', columnMap);
+
+        // Process data rows (skip header)
+        const newTransactions = [];
+        const banksFound = new Set();
+
+        for (let i = 1; i < jsonData.length; i++) {
+            const row = jsonData[i];
+            if (!row || row.length === 0) continue;
+
+            // Get values from mapped columns
+            let fecha = columnMap.fecha >= 0 ? row[columnMap.fecha] : null;
+            let valor = columnMap.valor >= 0 ? row[columnMap.valor] : 0;
+            let tipo = columnMap.tipo >= 0 ? row[columnMap.tipo] : 'Otro';
+            let categoria = columnMap.categoria >= 0 ? row[columnMap.categoria] : 'Otros';
+            let detalle = columnMap.detalle >= 0 ? row[columnMap.detalle] : '';
+            let producto = columnMap.producto >= 0 ? row[columnMap.producto] : '';
+            let banco = columnMap.banco >= 0 ? row[columnMap.banco] : 'Sin banco';
+
+            // Track banks found
+            if (banco) banksFound.add(banco);
+
+            // Parse date (handle Excel serial dates)
+            if (typeof fecha === 'number') {
+                const date = XLSX.SSF.parse_date_code(fecha);
+                fecha = `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')}`;
+            } else if (fecha) {
+                // Use parseDateString to handle DD/MM/YYYY format correctly
+                const parsedDate = parseDateString(fecha);
+                if (!isNaN(parsedDate)) {
+                    // Format manually as YYYY-MM-DD using local time to avoid timezone shifts
+                    const y = parsedDate.getFullYear();
+                    const m = String(parsedDate.getMonth() + 1).padStart(2, '0');
+                    const d = String(parsedDate.getDate()).padStart(2, '0');
+                    fecha = `${y}-${m}-${d}`;
+                }
             }
 
-            if (uploadZone) {
-                uploadZone.addEventListener('dragover', (e) => {
-                    e.preventDefault();
-                    uploadZone.classList.add('border-primary', 'bg-primary/5');
+            // Parse value (remove currency symbols, commas, etc.)
+            let rawValue = 0;
+            if (typeof valor === 'string') {
+                // Handle LatAm format: 1.000,00 -> 1000.00
+                // 1. Remove dots (thousands)
+                // 2. Replace comma with dot (decimal)
+                let clean = valor.replace(/\./g, '').replace(',', '.');
+                rawValue = parseFloat(clean.replace(/[^0-9.-]/g, '')) || 0;
+            } else if (typeof valor === 'number') {
+                rawValue = valor;
+            }
+
+            // Infer type from sign if strictly numerical and type is unknown
+            if ((!tipo || tipo === 'Otro') && rawValue !== 0) {
+                if (rawValue > 0) {
+                    tipo = 'Depósito';
+                } else {
+                    tipo = 'Compra';
+                }
+            }
+
+            valor = Math.abs(rawValue);
+
+            // Normalize Income types (excluding 'abono' - TC payments are not income)
+            if (tipo) {
+                const lower = String(tipo).toLowerCase();
+                if (lower.includes('crédito') || lower.includes('credito') || lower.includes('entrada') || lower.includes('recibida') || lower.includes('recaudo')) {
+                    tipo = 'Depósito';
+                }
+            }
+
+            // Only add if we have a valid date and value
+            if (fecha && valor > 0) {
+                newTransactions.push({
+                    Fecha: fecha,
+                    Tipo: tipo || 'Compra',
+                    Valor: valor,
+                    Categoria: categoria || 'Otros',
+                    Banco: banco || 'Sin banco',
+                    Detalle: detalle || '',
+                    Producto: producto || '',
+                    Miembro: member
                 });
-
-                uploadZone.addEventListener('dragleave', () => {
-                    uploadZone.classList.remove('border-primary', 'bg-primary/5');
-                });
-
-                uploadZone.addEventListener('drop', (e) => {
-                    e.preventDefault();
-                    uploadZone.classList.remove('border-primary', 'bg-primary/5');
-                    const files = e.dataTransfer.files;
-                    if (files.length > 0) {
-                        handleFile(files[0]);
-                    }
-                });
             }
         }
 
-        function handleFileSelect(e) {
-            const file = e.target.files[0];
-            if (file) handleFile(file);
+        console.log(`✅ Parsed ${newTransactions.length} transactions from Excel`);
+        console.log(`🏦 Banks found: ${Array.from(banksFound).join(', ')} `);
+
+        if (newTransactions.length === 0) {
+            throw new Error('No se encontraron transacciones válidas en el archivo');
         }
 
-        async function handleFile(file) {
-            const member = document.getElementById('upload-member')?.value;
+        // Add to existing transactions
+        // Save to Supabase
 
-            if (!member) {
-                showNotification('Por favor selecciona un miembro de la familia', 'warning');
-                return;
-            }
+        // Prepare payload for Supabase (snake_case)
+        const payload = newTransactions.map(t => ({
+            fecha: t.Fecha,
+            tipo: t.Tipo,
+            valor: t.Valor,
+            categoria: t.Categoria,
+            banco: t.Banco,
+            detalle: t.Detalle,
+            producto: t.Producto,
+            numero_producto: t.NumeroProducto,
+            miembro: t.Miembro,
+            family_id: getCurrentFamilyId() // Add Family ID
+        }));
 
-            console.log(`📁 Processing file: ${file.name} for member: ${member} `);
+        console.log('📤 Uploading to Supabase...', payload.length);
 
-            // Add to upload history (processing state)
-            addUploadHistory(file.name, 'Detectando...', member, 'processing');
-
-            try {
-                const data = await file.arrayBuffer();
-                const workbook = XLSX.read(data, { type: 'array' });
-
-                // Get the first sheet
-                const sheetName = workbook.SheetNames[0];
-                const worksheet = workbook.Sheets[sheetName];
-
-                // Convert to JSON
-                const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-
-                if (jsonData.length < 2) {
-                    throw new Error('El archivo está vacío o no tiene datos');
-                }
-
-                // Get header row (first row)
-                const headers = jsonData[0].map(h => String(h).toLowerCase().trim());
-                console.log('📋 Headers found:', headers);
-
-                // Map common column names (including banco)
-                const columnMap = {
-                    fecha: headers.findIndex(h => h.includes('fecha') || h.includes('date')),
-                    tipo: headers.findIndex(h => h.includes('tipo') || h.includes('type') || h.includes('naturaleza') || h.includes('movimiento')),
-                    valor: headers.findIndex(h => h.includes('valor') || h.includes('monto') || h.includes('amount') || h.includes('importe')),
-                    categoria: headers.findIndex(h => h.includes('categoria') || h.includes('category')),
-                    detalle: headers.findIndex(h => h.includes('detalle') || h.includes('descripcion') || h.includes('description') || h.includes('concepto')),
-                    producto: headers.findIndex(h => h.includes('producto') || h.includes('cuenta') || h.includes('product')),
-                    banco: headers.findIndex(h => h.includes('banco') || h.includes('bank') || h.includes('entidad'))
-                };
-
-                console.log('🗺️ Column mapping:', columnMap);
-
-                // Process data rows (skip header)
-                const newTransactions = [];
-                const banksFound = new Set();
-
-                for (let i = 1; i < jsonData.length; i++) {
-                    const row = jsonData[i];
-                    if (!row || row.length === 0) continue;
-
-                    // Get values from mapped columns
-                    let fecha = columnMap.fecha >= 0 ? row[columnMap.fecha] : null;
-                    let valor = columnMap.valor >= 0 ? row[columnMap.valor] : 0;
-                    let tipo = columnMap.tipo >= 0 ? row[columnMap.tipo] : 'Otro';
-                    let categoria = columnMap.categoria >= 0 ? row[columnMap.categoria] : 'Otros';
-                    let detalle = columnMap.detalle >= 0 ? row[columnMap.detalle] : '';
-                    let producto = columnMap.producto >= 0 ? row[columnMap.producto] : '';
-                    let banco = columnMap.banco >= 0 ? row[columnMap.banco] : 'Sin banco';
-
-                    // Track banks found
-                    if (banco) banksFound.add(banco);
-
-                    // Parse date (handle Excel serial dates)
-                    if (typeof fecha === 'number') {
-                        const date = XLSX.SSF.parse_date_code(fecha);
-                        fecha = `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')}`;
-                    } else if (fecha) {
-                        // Use parseDateString to handle DD/MM/YYYY format correctly
-                        const parsedDate = parseDateString(fecha);
-                        if (!isNaN(parsedDate)) {
-                            // Format manually as YYYY-MM-DD using local time to avoid timezone shifts
-                            const y = parsedDate.getFullYear();
-                            const m = String(parsedDate.getMonth() + 1).padStart(2, '0');
-                            const d = String(parsedDate.getDate()).padStart(2, '0');
-                            fecha = `${y}-${m}-${d}`;
-                        }
-                    }
-
-                    // Parse value (remove currency symbols, commas, etc.)
-                    let rawValue = 0;
-                    if (typeof valor === 'string') {
-                        // Handle LatAm format: 1.000,00 -> 1000.00
-                        // 1. Remove dots (thousands)
-                        // 2. Replace comma with dot (decimal)
-                        let clean = valor.replace(/\./g, '').replace(',', '.');
-                        rawValue = parseFloat(clean.replace(/[^0-9.-]/g, '')) || 0;
-                    } else if (typeof valor === 'number') {
-                        rawValue = valor;
-                    }
-
-                    // Infer type from sign if strictly numerical and type is unknown
-                    if ((!tipo || tipo === 'Otro') && rawValue !== 0) {
-                        if (rawValue > 0) {
-                            tipo = 'Depósito';
-                        } else {
-                            tipo = 'Compra';
-                        }
-                    }
-
-                    valor = Math.abs(rawValue);
-
-                    // Normalize Income types (excluding 'abono' - TC payments are not income)
-                    if (tipo) {
-                        const lower = String(tipo).toLowerCase();
-                        if (lower.includes('crédito') || lower.includes('credito') || lower.includes('entrada') || lower.includes('recibida') || lower.includes('recaudo')) {
-                            tipo = 'Depósito';
-                        }
-                    }
-
-                    // Only add if we have a valid date and value
-                    if (fecha && valor > 0) {
-                        newTransactions.push({
-                            Fecha: fecha,
-                            Tipo: tipo || 'Compra',
-                            Valor: valor,
-                            Categoria: categoria || 'Otros',
-                            Banco: banco || 'Sin banco',
-                            Detalle: detalle || '',
-                            Producto: producto || '',
-                            Miembro: member
-                        });
-                    }
-                }
-
-                console.log(`✅ Parsed ${newTransactions.length} transactions from Excel`);
-                console.log(`🏦 Banks found: ${Array.from(banksFound).join(', ')} `);
-
-                if (newTransactions.length === 0) {
-                    throw new Error('No se encontraron transacciones válidas en el archivo');
-                }
-
-                // Add to existing transactions
-                // Save to Supabase
-
-                // Prepare payload for Supabase (snake_case)
-                const payload = newTransactions.map(t => ({
-                    fecha: t.Fecha,
-                    tipo: t.Tipo,
-                    valor: t.Valor,
-                    categoria: t.Categoria,
-                    banco: t.Banco,
-                    detalle: t.Detalle,
-                    producto: t.Producto,
-                    numero_producto: t.NumeroProducto,
-                    miembro: t.Miembro,
-                    family_id: getCurrentFamilyId() // Add Family ID
-                }));
-
-                console.log('📤 Uploading to Supabase...', payload.length);
-
-                // Upload in batches of 100
-                const batchSize = 100;
-                for (let i = 0; i < payload.length; i += batchSize) {
-                    const batch = payload.slice(i, i + batchSize);
-                    const { error } = await supabaseClient.from('movimientos').insert(batch);
-                    if (error) throw error;
-                }
-
-                // Re-load data from server to get persistent state (and IDs)
-                await loadData();
-
-                // Update history to success with banks info
-                const banksStr = Array.from(banksFound).join(', ') || 'N/A';
-                addUploadHistory(file.name, banksStr, member, 'success');
-                showNotification(`Se cargaron ${newTransactions.length} transacciones de ${banksStr} y se sincronizaron con la nube`, 'success');
-
-            } catch (error) {
-                console.error('Error processing file:', error);
-                addUploadHistory(file.name, 'Error', member, 'error');
-                showNotification(`Error al procesar archivo: ${error.message} `, 'error');
-            }
+        // Upload in batches of 100
+        const batchSize = 100;
+        for (let i = 0; i < payload.length; i += batchSize) {
+            const batch = payload.slice(i, i + batchSize);
+            const { error } = await supabaseClient.from('movimientos').insert(batch);
+            if (error) throw error;
         }
 
-        function addUploadHistory(filename, bank, memberId, status) {
-            const tbody = document.getElementById('upload-history-body');
-            if (!tbody) return;
+        // Re-load data from server to get persistent state (and IDs)
+        await loadData();
 
-            const statusBadge = {
-                processing: '<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400"><span class="size-1.5 rounded-full bg-blue-500 animate-pulse"></span>Procesando</span>',
-                success: '<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400"><span class="size-1.5 rounded-full bg-green-500"></span>Listo</span>',
-                error: '<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400"><span class="size-1.5 rounded-full bg-red-500"></span>Error</span>'
-            };
+        // Update history to success with banks info
+        const banksStr = Array.from(banksFound).join(', ') || 'N/A';
+        addUploadHistory(file.name, banksStr, member, 'success');
+        showNotification(`Se cargaron ${newTransactions.length} transacciones de ${banksStr} y se sincronizaron con la nube`, 'success');
 
-            const memberData = currentFamilyMembers.find(m => m.id === memberId) || { id: memberId, name: 'Desconocido', initials: (memberId || '?')[0].toUpperCase(), color: 'bg-gray-500' };
+    } catch (error) {
+        console.error('Error processing file:', error);
+        addUploadHistory(file.name, 'Error', member, 'error');
+        showNotification(`Error al procesar archivo: ${error.message} `, 'error');
+    }
+}
 
-            const row = `
+function addUploadHistory(filename, bank, memberId, status) {
+    const tbody = document.getElementById('upload-history-body');
+    if (!tbody) return;
+
+    const statusBadge = {
+        processing: '<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400"><span class="size-1.5 rounded-full bg-blue-500 animate-pulse"></span>Procesando</span>',
+        success: '<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400"><span class="size-1.5 rounded-full bg-green-500"></span>Listo</span>',
+        error: '<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400"><span class="size-1.5 rounded-full bg-red-500"></span>Error</span>'
+    };
+
+    const memberData = currentFamilyMembers.find(m => m.id === memberId) || { id: memberId, name: 'Desconocido', initials: (memberId || '?')[0].toUpperCase(), color: 'bg-gray-500' };
+
+    const row = `
     <tr class="hover:bg-slate-50 dark:hover:bg-[#1c2333]/50 transition-colors">
             <td class="px-6 py-4">
                 <div class="flex items-center gap-3">
@@ -1725,277 +1729,277 @@ Responde en español, con emojis, formato: "1. [emoji] [consejo corto]" para cad
         </tr>
     `;
 
-            // Clear "no uploads" message if present
-            if (tbody.querySelector('td[colspan]')) {
-                tbody.innerHTML = '';
-            }
+    // Clear "no uploads" message if present
+    if (tbody.querySelector('td[colspan]')) {
+        tbody.innerHTML = '';
+    }
 
-            tbody.insertAdjacentHTML('afterbegin', row);
+    tbody.insertAdjacentHTML('afterbegin', row);
+}
+
+// =========================================
+// UTILITY FUNCTIONS
+// =========================================
+function formatCurrency(value) {
+    return new Intl.NumberFormat(CONFIG.LOCALE, {
+        style: 'currency',
+        currency: CONFIG.CURRENCY,
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
+    }).format(value);
+}
+
+function formatCurrencyShort(value) {
+    if (value >= 1000000) return `$${(value / 1000000).toFixed(1)} M`;
+    if (value >= 1000) return `$${(value / 1000).toFixed(0)} K`;
+    return formatCurrency(value);
+}
+
+// Parse date string handling DD/MM/YYYY format
+function parseDateString(dateStr) {
+    if (!dateStr) return new Date();
+
+    // If it's already a Date object
+    if (dateStr instanceof Date) return dateStr;
+
+    // If it's specifically YYYY-MM-DD (no time), parse as local date to prevent timezone shift
+    if (dateStr.length === 10 && dateStr.charAt(4) === '-' && dateStr.charAt(7) === '-') {
+        const [y, m, d] = dateStr.split('-').map(Number);
+        return new Date(y, m - 1, d);
+    }
+
+    // Other ISO formats (with time) can fall back to standard constructor
+    if (dateStr.includes('T') || (dateStr.includes('-') && dateStr.indexOf('-') === 4)) {
+        return new Date(dateStr);
+    }
+
+    // Handle DD/MM/YYYY or DD-MM-YYYY format
+    const separator = dateStr.includes('/') ? '/' : '-';
+    const parts = dateStr.split(separator);
+
+    if (parts.length === 3) {
+        const first = parseInt(parts[0], 10);
+        const second = parseInt(parts[1], 10);
+        const third = parseInt(parts[2], 10);
+
+        // If first part > 12, assume DD/MM/YYYY (Spanish format)
+        // If first part has 4 digits, assume YYYY/MM/DD
+        if (parts[0].length === 4) {
+            // YYYY/MM/DD format
+            return new Date(first, second - 1, third);
+        } else if (first > 12) {
+            // DD/MM/YYYY format (Spanish)
+            return new Date(third, second - 1, first);
+        } else if (second > 12) {
+            // MM/DD/YYYY format (American)
+            return new Date(third, first - 1, second);
+        } else {
+            // Ambiguous - assume DD/MM/YYYY (Spanish format for Colombian context)
+            return new Date(third, second - 1, first);
+        }
+    }
+
+    // Fallback to default parsing
+    return new Date(dateStr);
+}
+
+function formatDate(dateStr) {
+    const date = parseDateString(dateStr);
+    return date.toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+function getDaysInPeriod() {
+    const period = document.getElementById('period-filter')?.value || 'month';
+    switch (period) {
+        case 'month': return 30;
+        case '3months': return 90;
+        case '6months': return 180;
+        case 'year': return 365;
+        default: return 30;
+    }
+}
+
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+// =========================================
+// GASTOS & INGRESOS ADVANCED FILTERS
+// =========================================
+const MONTHS_ES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+
+function populateAdvancedFilters() {
+    // Extract unique values from all transactions
+    const years = [...new Set(allTransactions.map(t => parseDateString(t.Fecha).getFullYear()).filter(y => !isNaN(y)))].sort((a, b) => b - a);
+    const months = [...new Set(allTransactions.map(t => parseDateString(t.Fecha).getMonth()).filter(m => !isNaN(m)))].sort((a, b) => a - b);
+    const banks = [...new Set(allTransactions.map(t => t.Banco).filter(b => b && b !== '--'))];
+    const categories = [...new Set(allTransactions.map(t => t.Categoria).filter(c => c))];
+
+    // Populate Gastos filters
+    populateSelect('filter-member-gastos', currentFamilyMembers.map(m => ({ value: m.id, label: m.name })), 'Miembro: Todos');
+    populateSelect('filter-month-gastos', months.map(m => ({ value: m, label: MONTHS_ES[m] })), 'Mes: Todos');
+    populateSelect('filter-year-gastos', years.map(y => ({ value: y, label: y })), 'Año: Todos');
+    populateSelect('filter-bank-gastos', banks.map(b => ({ value: b, label: b })), 'Banco: Todos');
+    populateSelect('filter-category-gastos', categories.map(c => ({ value: c, label: c })), 'Categoría: Todas');
+
+    // Populate Ingresos filters
+    populateSelect('filter-member-ingresos', currentFamilyMembers.map(m => ({ value: m.id, label: m.name })), 'Miembro: Todos');
+    populateSelect('filter-month-ingresos', months.map(m => ({ value: m, label: MONTHS_ES[m] })), 'Mes: Todos');
+    populateSelect('filter-year-ingresos', years.map(y => ({ value: y, label: y })), 'Año: Todos');
+    populateSelect('filter-bank-ingresos', banks.map(b => ({ value: b, label: b })), 'Banco: Todos');
+    populateSelect('filter-category-ingresos', categories.map(c => ({ value: c, label: c })), 'Fuente: Todas');
+
+    // Populate Resumen filters
+    populateSelect('filter-month-resumen', months.map(m => ({ value: m, label: MONTHS_ES[m] })), 'Mes: Todos');
+    populateSelect('filter-year-resumen', years.map(y => ({ value: y, label: y })), 'Año: Todos');
+}
+
+function applyResumenFilters() {
+    const monthFilter = document.getElementById('filter-month-resumen')?.value || 'all';
+    const yearFilter = document.getElementById('filter-year-resumen')?.value || 'all';
+
+    // Filter transactions based on selected month and year
+    filteredTransactions = allTransactions.filter(t => {
+        const date = parseDateString(t.Fecha);
+
+        // Month filter
+        if (monthFilter !== 'all' && date.getMonth() !== parseInt(monthFilter)) return false;
+
+        // Year filter
+        if (yearFilter !== 'all' && date.getFullYear() !== parseInt(yearFilter)) return false;
+
+        // Member filter (from selectedMembers global)
+        // If selectedMembers is empty, it means "all members" are selected.
+        const memberMatch = selectedMembers.length === 0 || selectedMembers.includes(t.Miembro);
+
+        // Fallback for legacy data where Miembro might be a name string instead of an ID
+        const legacyMemberMatch = selectedMembers.length === 0 || currentFamilyMembers.some(m =>
+            selectedMembers.includes(m.id) && (m.id === t.Miembro || m.name.toLowerCase() === (t.Miembro || '').toLowerCase())
+        );
+
+        return memberMatch || legacyMemberMatch;
+    });
+
+    // Re-render affected components
+    renderKPIs();
+    renderCharts();
+    renderRecentTransactions();
+    renderCategoryDonut();
+    renderFamilyIncome();
+    renderAccounts();
+}
+
+function populateSelect(selectId, options, defaultLabel) {
+    const select = document.getElementById(selectId);
+    if (!select) return;
+
+    select.innerHTML = `<option value = "all"> ${defaultLabel}</option> ` +
+        options.map(opt => `<option value = "${opt.value}"> ${opt.label}</option> `).join('');
+}
+
+function applyGastosFilters() {
+    renderGastosTable();
+}
+
+function applyIngresosFilters() {
+    renderIngresosTable();
+}
+
+function clearGastosFilters() {
+    document.getElementById('filter-member-gastos').value = 'all';
+    document.getElementById('filter-month-gastos').value = 'all';
+    document.getElementById('filter-year-gastos').value = 'all';
+    document.getElementById('filter-bank-gastos').value = 'all';
+    document.getElementById('filter-category-gastos').value = 'all';
+    document.getElementById('search-gastos').value = '';
+    applyGastosFilters();
+    showNotification('Filtros de gastos limpiados', 'info');
+}
+
+function clearIngresosFilters() {
+    document.getElementById('filter-member-ingresos').value = 'all';
+    document.getElementById('filter-month-ingresos').value = 'all';
+    document.getElementById('filter-year-ingresos').value = 'all';
+    document.getElementById('filter-bank-ingresos').value = 'all';
+    document.getElementById('filter-category-ingresos').value = 'all';
+    document.getElementById('search-ingresos').value = '';
+    applyIngresosFilters();
+    showNotification('Filtros de ingresos limpiados', 'info');
+}
+
+function getGastosFilterValues() {
+    return {
+        member: document.getElementById('filter-member-gastos')?.value || 'all',
+        month: document.getElementById('filter-month-gastos')?.value || 'all',
+        year: document.getElementById('filter-year-gastos')?.value || 'all',
+        bank: document.getElementById('filter-bank-gastos')?.value || 'all',
+        category: document.getElementById('filter-category-gastos')?.value || 'all',
+        search: document.getElementById('search-gastos')?.value?.toLowerCase()?.trim() || ''
+    };
+}
+
+function getIngresosFilterValues() {
+    return {
+        member: document.getElementById('filter-member-ingresos')?.value || 'all',
+        month: document.getElementById('filter-month-ingresos')?.value || 'all',
+        year: document.getElementById('filter-year-ingresos')?.value || 'all',
+        bank: document.getElementById('filter-bank-ingresos')?.value || 'all',
+        category: document.getElementById('filter-category-ingresos')?.value || 'all',
+        search: document.getElementById('search-ingresos')?.value?.toLowerCase()?.trim() || ''
+    };
+}
+
+function filterByAdvancedCriteria(transactions, filters) {
+    return transactions.filter(t => {
+        const date = parseDateString(t.Fecha);
+
+        // Member filter
+        // Check if the transaction's member ID matches the filter, or if the member name matches for legacy data
+        const memberFilterMatch = filters.member === 'all' ||
+            t.Miembro === filters.member ||
+            currentFamilyMembers.some(m => m.id === filters.member && m.name.toLowerCase() === (t.Miembro || '').toLowerCase());
+        if (!memberFilterMatch) return false;
+
+        // Month filter
+        if (filters.month !== 'all' && date.getMonth() !== parseInt(filters.month)) return false;
+
+        // Year filter
+        if (filters.year !== 'all' && date.getFullYear() !== parseInt(filters.year)) return false;
+
+        // Bank filter
+        if (filters.bank !== 'all' && t.Banco !== filters.bank) return false;
+
+        // Category filter
+        if (filters.category !== 'all' && t.Categoria !== filters.category) return false;
+
+        // Search filter
+        if (filters.search) {
+            const searchMatch = (t.Detalle || '').toLowerCase().includes(filters.search) ||
+                (t.Categoria || '').toLowerCase().includes(filters.search) ||
+                String(t.Valor).includes(filters.search);
+            if (!searchMatch) return false;
         }
 
-        // =========================================
-        // UTILITY FUNCTIONS
-        // =========================================
-        function formatCurrency(value) {
-            return new Intl.NumberFormat(CONFIG.LOCALE, {
-                style: 'currency',
-                currency: CONFIG.CURRENCY,
-                minimumFractionDigits: 0,
-                maximumFractionDigits: 0
-            }).format(value);
-        }
+        return true;
+    });
+}
 
-        function formatCurrencyShort(value) {
-            if (value >= 1000000) return `$${(value / 1000000).toFixed(1)} M`;
-            if (value >= 1000) return `$${(value / 1000).toFixed(0)} K`;
-            return formatCurrency(value);
-        }
+// =========================================
+// MEMBER FILTER DROPDOWN
+// =========================================
+function initMemberFilter() {
+    const container = document.getElementById('member-checkboxes');
+    if (!container) return;
 
-        // Parse date string handling DD/MM/YYYY format
-        function parseDateString(dateStr) {
-            if (!dateStr) return new Date();
-
-            // If it's already a Date object
-            if (dateStr instanceof Date) return dateStr;
-
-            // If it's specifically YYYY-MM-DD (no time), parse as local date to prevent timezone shift
-            if (dateStr.length === 10 && dateStr.charAt(4) === '-' && dateStr.charAt(7) === '-') {
-                const [y, m, d] = dateStr.split('-').map(Number);
-                return new Date(y, m - 1, d);
-            }
-
-            // Other ISO formats (with time) can fall back to standard constructor
-            if (dateStr.includes('T') || (dateStr.includes('-') && dateStr.indexOf('-') === 4)) {
-                return new Date(dateStr);
-            }
-
-            // Handle DD/MM/YYYY or DD-MM-YYYY format
-            const separator = dateStr.includes('/') ? '/' : '-';
-            const parts = dateStr.split(separator);
-
-            if (parts.length === 3) {
-                const first = parseInt(parts[0], 10);
-                const second = parseInt(parts[1], 10);
-                const third = parseInt(parts[2], 10);
-
-                // If first part > 12, assume DD/MM/YYYY (Spanish format)
-                // If first part has 4 digits, assume YYYY/MM/DD
-                if (parts[0].length === 4) {
-                    // YYYY/MM/DD format
-                    return new Date(first, second - 1, third);
-                } else if (first > 12) {
-                    // DD/MM/YYYY format (Spanish)
-                    return new Date(third, second - 1, first);
-                } else if (second > 12) {
-                    // MM/DD/YYYY format (American)
-                    return new Date(third, first - 1, second);
-                } else {
-                    // Ambiguous - assume DD/MM/YYYY (Spanish format for Colombian context)
-                    return new Date(third, second - 1, first);
-                }
-            }
-
-            // Fallback to default parsing
-            return new Date(dateStr);
-        }
-
-        function formatDate(dateStr) {
-            const date = parseDateString(dateStr);
-            return date.toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' });
-        }
-
-        function getDaysInPeriod() {
-            const period = document.getElementById('period-filter')?.value || 'month';
-            switch (period) {
-                case 'month': return 30;
-                case '3months': return 90;
-                case '6months': return 180;
-                case 'year': return 365;
-                default: return 30;
-            }
-        }
-
-        function debounce(func, wait) {
-            let timeout;
-            return function executedFunction(...args) {
-                const later = () => {
-                    clearTimeout(timeout);
-                    func(...args);
-                };
-                clearTimeout(timeout);
-                timeout = setTimeout(later, wait);
-            };
-        }
-        // =========================================
-        // GASTOS & INGRESOS ADVANCED FILTERS
-        // =========================================
-        const MONTHS_ES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-            'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
-
-        function populateAdvancedFilters() {
-            // Extract unique values from all transactions
-            const years = [...new Set(allTransactions.map(t => parseDateString(t.Fecha).getFullYear()).filter(y => !isNaN(y)))].sort((a, b) => b - a);
-            const months = [...new Set(allTransactions.map(t => parseDateString(t.Fecha).getMonth()).filter(m => !isNaN(m)))].sort((a, b) => a - b);
-            const banks = [...new Set(allTransactions.map(t => t.Banco).filter(b => b && b !== '--'))];
-            const categories = [...new Set(allTransactions.map(t => t.Categoria).filter(c => c))];
-
-            // Populate Gastos filters
-            populateSelect('filter-member-gastos', currentFamilyMembers.map(m => ({ value: m.id, label: m.name })), 'Miembro: Todos');
-            populateSelect('filter-month-gastos', months.map(m => ({ value: m, label: MONTHS_ES[m] })), 'Mes: Todos');
-            populateSelect('filter-year-gastos', years.map(y => ({ value: y, label: y })), 'Año: Todos');
-            populateSelect('filter-bank-gastos', banks.map(b => ({ value: b, label: b })), 'Banco: Todos');
-            populateSelect('filter-category-gastos', categories.map(c => ({ value: c, label: c })), 'Categoría: Todas');
-
-            // Populate Ingresos filters
-            populateSelect('filter-member-ingresos', currentFamilyMembers.map(m => ({ value: m.id, label: m.name })), 'Miembro: Todos');
-            populateSelect('filter-month-ingresos', months.map(m => ({ value: m, label: MONTHS_ES[m] })), 'Mes: Todos');
-            populateSelect('filter-year-ingresos', years.map(y => ({ value: y, label: y })), 'Año: Todos');
-            populateSelect('filter-bank-ingresos', banks.map(b => ({ value: b, label: b })), 'Banco: Todos');
-            populateSelect('filter-category-ingresos', categories.map(c => ({ value: c, label: c })), 'Fuente: Todas');
-
-            // Populate Resumen filters
-            populateSelect('filter-month-resumen', months.map(m => ({ value: m, label: MONTHS_ES[m] })), 'Mes: Todos');
-            populateSelect('filter-year-resumen', years.map(y => ({ value: y, label: y })), 'Año: Todos');
-        }
-
-        function applyResumenFilters() {
-            const monthFilter = document.getElementById('filter-month-resumen')?.value || 'all';
-            const yearFilter = document.getElementById('filter-year-resumen')?.value || 'all';
-
-            // Filter transactions based on selected month and year
-            filteredTransactions = allTransactions.filter(t => {
-                const date = parseDateString(t.Fecha);
-
-                // Month filter
-                if (monthFilter !== 'all' && date.getMonth() !== parseInt(monthFilter)) return false;
-
-                // Year filter
-                if (yearFilter !== 'all' && date.getFullYear() !== parseInt(yearFilter)) return false;
-
-                // Member filter (from selectedMembers global)
-                // If selectedMembers is empty, it means "all members" are selected.
-                const memberMatch = selectedMembers.length === 0 || selectedMembers.includes(t.Miembro);
-
-                // Fallback for legacy data where Miembro might be a name string instead of an ID
-                const legacyMemberMatch = selectedMembers.length === 0 || currentFamilyMembers.some(m =>
-                    selectedMembers.includes(m.id) && (m.id === t.Miembro || m.name.toLowerCase() === (t.Miembro || '').toLowerCase())
-                );
-
-                return memberMatch || legacyMemberMatch;
-            });
-
-            // Re-render affected components
-            renderKPIs();
-            renderCharts();
-            renderRecentTransactions();
-            renderCategoryDonut();
-            renderFamilyIncome();
-            renderAccounts();
-        }
-
-        function populateSelect(selectId, options, defaultLabel) {
-            const select = document.getElementById(selectId);
-            if (!select) return;
-
-            select.innerHTML = `<option value = "all"> ${defaultLabel}</option> ` +
-                options.map(opt => `<option value = "${opt.value}"> ${opt.label}</option> `).join('');
-        }
-
-        function applyGastosFilters() {
-            renderGastosTable();
-        }
-
-        function applyIngresosFilters() {
-            renderIngresosTable();
-        }
-
-        function clearGastosFilters() {
-            document.getElementById('filter-member-gastos').value = 'all';
-            document.getElementById('filter-month-gastos').value = 'all';
-            document.getElementById('filter-year-gastos').value = 'all';
-            document.getElementById('filter-bank-gastos').value = 'all';
-            document.getElementById('filter-category-gastos').value = 'all';
-            document.getElementById('search-gastos').value = '';
-            applyGastosFilters();
-            showNotification('Filtros de gastos limpiados', 'info');
-        }
-
-        function clearIngresosFilters() {
-            document.getElementById('filter-member-ingresos').value = 'all';
-            document.getElementById('filter-month-ingresos').value = 'all';
-            document.getElementById('filter-year-ingresos').value = 'all';
-            document.getElementById('filter-bank-ingresos').value = 'all';
-            document.getElementById('filter-category-ingresos').value = 'all';
-            document.getElementById('search-ingresos').value = '';
-            applyIngresosFilters();
-            showNotification('Filtros de ingresos limpiados', 'info');
-        }
-
-        function getGastosFilterValues() {
-            return {
-                member: document.getElementById('filter-member-gastos')?.value || 'all',
-                month: document.getElementById('filter-month-gastos')?.value || 'all',
-                year: document.getElementById('filter-year-gastos')?.value || 'all',
-                bank: document.getElementById('filter-bank-gastos')?.value || 'all',
-                category: document.getElementById('filter-category-gastos')?.value || 'all',
-                search: document.getElementById('search-gastos')?.value?.toLowerCase()?.trim() || ''
-            };
-        }
-
-        function getIngresosFilterValues() {
-            return {
-                member: document.getElementById('filter-member-ingresos')?.value || 'all',
-                month: document.getElementById('filter-month-ingresos')?.value || 'all',
-                year: document.getElementById('filter-year-ingresos')?.value || 'all',
-                bank: document.getElementById('filter-bank-ingresos')?.value || 'all',
-                category: document.getElementById('filter-category-ingresos')?.value || 'all',
-                search: document.getElementById('search-ingresos')?.value?.toLowerCase()?.trim() || ''
-            };
-        }
-
-        function filterByAdvancedCriteria(transactions, filters) {
-            return transactions.filter(t => {
-                const date = parseDateString(t.Fecha);
-
-                // Member filter
-                // Check if the transaction's member ID matches the filter, or if the member name matches for legacy data
-                const memberFilterMatch = filters.member === 'all' ||
-                    t.Miembro === filters.member ||
-                    currentFamilyMembers.some(m => m.id === filters.member && m.name.toLowerCase() === (t.Miembro || '').toLowerCase());
-                if (!memberFilterMatch) return false;
-
-                // Month filter
-                if (filters.month !== 'all' && date.getMonth() !== parseInt(filters.month)) return false;
-
-                // Year filter
-                if (filters.year !== 'all' && date.getFullYear() !== parseInt(filters.year)) return false;
-
-                // Bank filter
-                if (filters.bank !== 'all' && t.Banco !== filters.bank) return false;
-
-                // Category filter
-                if (filters.category !== 'all' && t.Categoria !== filters.category) return false;
-
-                // Search filter
-                if (filters.search) {
-                    const searchMatch = (t.Detalle || '').toLowerCase().includes(filters.search) ||
-                        (t.Categoria || '').toLowerCase().includes(filters.search) ||
-                        String(t.Valor).includes(filters.search);
-                    if (!searchMatch) return false;
-                }
-
-                return true;
-            });
-        }
-
-        // =========================================
-        // MEMBER FILTER DROPDOWN
-        // =========================================
-        function initMemberFilter() {
-            const container = document.getElementById('member-checkboxes');
-            if (!container) return;
-
-            container.innerHTML = `
+    container.innerHTML = `
     <label class="flex items-center gap-3 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg p-2 -m-1">
         <input type="checkbox" id="member-all" value="all" checked
             class="w-4 h-4 text-primary rounded border-slate-300 focus:ring-primary"
@@ -2007,10 +2011,10 @@ Responde en español, con emojis, formato: "1. [emoji] [consejo corto]" para cad
         </label>
 `;
 
-            currentFamilyMembers.forEach(member => {
-                const div = document.createElement('div');
-                div.className = 'flex items-center justify-between p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-[#1f2633]';
-                div.innerHTML = `
+    currentFamilyMembers.forEach(member => {
+        const div = document.createElement('div');
+        div.className = 'flex items-center justify-between p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-[#1f2633]';
+        div.innerHTML = `
     <label class="flex items-center gap-3 cursor-pointer">
         <input type="checkbox" id="member-${member.id}" value="${member.id}" checked
             class="w-4 h-4 text-primary rounded border-slate-300 focus:ring-primary"
@@ -2023,120 +2027,120 @@ Responde en español, con emojis, formato: "1. [emoji] [consejo corto]" para cad
             </div>
         </label>
 `;
-                container.appendChild(div);
-            });
+        container.appendChild(div);
+    });
 
-            // Ensure 'all' is checked initially and selectedMembers is empty
-            document.getElementById('member-all').checked = true;
+    // Ensure 'all' is checked initially and selectedMembers is empty
+    document.getElementById('member-all').checked = true;
+    selectedMembers = [];
+    updateMemberFilterLabel();
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+        const dropdown = document.getElementById('member-dropdown');
+        const btn = document.getElementById('member-filter-btn');
+        if (dropdown && btn && !dropdown.contains(e.target) && !btn.contains(e.target)) {
+            dropdown.classList.add('hidden');
+        }
+    });
+}
+
+function toggleMemberDropdown() {
+    const dropdown = document.getElementById('member-dropdown');
+    if (dropdown) {
+        dropdown.classList.toggle('hidden');
+    }
+}
+
+function onMemberFilterChange(memberId) {
+    const allCheckbox = document.getElementById('member-all');
+    const memberCheckboxes = currentFamilyMembers.map(m => document.getElementById(`member-${m.id}`));
+
+    if (memberId === 'all') {
+        // If "All" is checked, select all members and clear selectedMembers
+        if (allCheckbox.checked) {
             selectedMembers = [];
-            updateMemberFilterLabel();
-
-            // Close dropdown when clicking outside
-            document.addEventListener('click', (e) => {
-                const dropdown = document.getElementById('member-dropdown');
-                const btn = document.getElementById('member-filter-btn');
-                if (dropdown && btn && !dropdown.contains(e.target) && !btn.contains(e.target)) {
-                    dropdown.classList.add('hidden');
-                }
-            });
+            memberCheckboxes.forEach(cb => { if (cb) cb.checked = true; });
+        } else {
+            // If "All" is unchecked, deselect all and set selectedMembers to all IDs
+            selectedMembers = currentFamilyMembers.map(m => m.id);
+            memberCheckboxes.forEach(cb => { if (cb) cb.checked = false; });
         }
-
-        function toggleMemberDropdown() {
-            const dropdown = document.getElementById('member-dropdown');
-            if (dropdown) {
-                dropdown.classList.toggle('hidden');
+    } else {
+        // Individual member checkbox changed
+        const memberCheckbox = document.getElementById(`member - ${memberId} `);
+        if (memberCheckbox.checked) {
+            // Add member to selectedMembers if not already there
+            if (!selectedMembers.includes(memberId)) {
+                selectedMembers.push(memberId);
             }
+        } else {
+            // Remove member from selectedMembers
+            selectedMembers = selectedMembers.filter(id => id !== memberId);
         }
 
-        function onMemberFilterChange(memberId) {
-            const allCheckbox = document.getElementById('member-all');
-            const memberCheckboxes = currentFamilyMembers.map(m => document.getElementById(`member-${m.id}`));
+        // Update "All" checkbox state based on individual selections
+        const allSelected = memberCheckboxes.every(cb => cb && cb.checked);
+        const noneSelected = memberCheckboxes.every(cb => cb && !cb.checked);
 
-            if (memberId === 'all') {
-                // If "All" is checked, select all members and clear selectedMembers
-                if (allCheckbox.checked) {
-                    selectedMembers = [];
-                    memberCheckboxes.forEach(cb => { if (cb) cb.checked = true; });
-                } else {
-                    // If "All" is unchecked, deselect all and set selectedMembers to all IDs
-                    selectedMembers = currentFamilyMembers.map(m => m.id);
-                    memberCheckboxes.forEach(cb => { if (cb) cb.checked = false; });
-                }
-            } else {
-                // Individual member checkbox changed
-                const memberCheckbox = document.getElementById(`member - ${memberId} `);
-                if (memberCheckbox.checked) {
-                    // Add member to selectedMembers if not already there
-                    if (!selectedMembers.includes(memberId)) {
-                        selectedMembers.push(memberId);
-                    }
-                } else {
-                    // Remove member from selectedMembers
-                    selectedMembers = selectedMembers.filter(id => id !== memberId);
-                }
-
-                // Update "All" checkbox state based on individual selections
-                const allSelected = memberCheckboxes.every(cb => cb && cb.checked);
-                const noneSelected = memberCheckboxes.every(cb => cb && !cb.checked);
-
-                if (allSelected) {
-                    allCheckbox.checked = true;
-                    selectedMembers = []; // Empty means all
-                } else {
-                    allCheckbox.checked = false;
-                }
-
-                if (noneSelected) {
-                    // If none selected, default to all and show warning
-                    allCheckbox.checked = true;
-                    selectedMembers = [];
-                    memberCheckboxes.forEach(cb => { if (cb) cb.checked = true; });
-                    showNotification('Debe seleccionar al menos un miembro. Se han seleccionado todos por defecto.', 'warning');
-                }
-            }
-
-            updateMemberFilterLabel();
-            applyFilters();
-            renderAll();
+        if (allSelected) {
+            allCheckbox.checked = true;
+            selectedMembers = []; // Empty means all
+        } else {
+            allCheckbox.checked = false;
         }
 
-        function updateMemberFilterLabel() {
-            const label = document.getElementById('member-filter-label');
-            if (!label) return;
-
-            if (selectedMembers.length === 0) {
-                label.textContent = 'Todos los Miembros';
-            } else if (selectedMembers.length === 1) {
-                const member = currentFamilyMembers.find(m => m.id === selectedMembers[0]);
-                label.textContent = member ? member.name : 'Un Miembro';
-            } else {
-                label.textContent = `${selectedMembers.length} Miembros`;
-            }
+        if (noneSelected) {
+            // If none selected, default to all and show warning
+            allCheckbox.checked = true;
+            selectedMembers = [];
+            memberCheckboxes.forEach(cb => { if (cb) cb.checked = true; });
+            showNotification('Debe seleccionar al menos un miembro. Se han seleccionado todos por defecto.', 'warning');
         }
+    }
 
-        // =========================================
-        // TOAST NOTIFICATIONS
-        // =========================================
-        function showNotification(message, type = 'success') {
-            const container = document.getElementById('toast-container');
-            if (!container) return;
+    updateMemberFilterLabel();
+    applyFilters();
+    renderAll();
+}
 
-            const icons = {
-                success: 'check_circle',
-                error: 'error',
-                warning: 'warning',
-                info: 'info'
-            };
-            const colors = {
-                success: 'bg-green-500',
-                error: 'bg-red-500',
-                warning: 'bg-yellow-500',
-                info: 'bg-blue-500'
-            };
+function updateMemberFilterLabel() {
+    const label = document.getElementById('member-filter-label');
+    if (!label) return;
 
-            const toast = document.createElement('div');
-            toast.className = `pointer - events - auto flex items - center gap - 3 px - 4 py - 3 rounded - xl ${colors[type]} text - white shadow - lg transform translate - x - full opacity - 0 transition - all duration - 300`;
-            toast.innerHTML = `
+    if (selectedMembers.length === 0) {
+        label.textContent = 'Todos los Miembros';
+    } else if (selectedMembers.length === 1) {
+        const member = currentFamilyMembers.find(m => m.id === selectedMembers[0]);
+        label.textContent = member ? member.name : 'Un Miembro';
+    } else {
+        label.textContent = `${selectedMembers.length} Miembros`;
+    }
+}
+
+// =========================================
+// TOAST NOTIFICATIONS
+// =========================================
+function showNotification(message, type = 'success') {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+
+    const icons = {
+        success: 'check_circle',
+        error: 'error',
+        warning: 'warning',
+        info: 'info'
+    };
+    const colors = {
+        success: 'bg-green-500',
+        error: 'bg-red-500',
+        warning: 'bg-yellow-500',
+        info: 'bg-blue-500'
+    };
+
+    const toast = document.createElement('div');
+    toast.className = `pointer - events - auto flex items - center gap - 3 px - 4 py - 3 rounded - xl ${colors[type]} text - white shadow - lg transform translate - x - full opacity - 0 transition - all duration - 300`;
+    toast.innerHTML = `
     <span class="material-symbols-outlined"> ${icons[type]}</span>
         <span class="text-sm font-medium">${message}</span>
         <button onclick="this.parentElement.remove()" class="ml-2 hover:bg-white/20 rounded-full p-1 transition-colors">
@@ -2144,137 +2148,137 @@ Responde en español, con emojis, formato: "1. [emoji] [consejo corto]" para cad
         </button>
 `;
 
-            container.appendChild(toast);
+    container.appendChild(toast);
 
-            // Animate in
-            requestAnimationFrame(() => {
-                toast.classList.remove('translate-x-full', 'opacity-0');
-            });
+    // Animate in
+    requestAnimationFrame(() => {
+        toast.classList.remove('translate-x-full', 'opacity-0');
+    });
 
-            // Auto remove after 5 seconds
-            setTimeout(() => {
-                toast.classList.add('translate-x-full', 'opacity-0');
-                setTimeout(() => toast.remove(), 300);
-            }, 5000);
+    // Auto remove after 5 seconds
+    setTimeout(() => {
+        toast.classList.add('translate-x-full', 'opacity-0');
+        setTimeout(() => toast.remove(), 300);
+    }, 5000);
+}
+
+// =========================================
+// EDIT CATEGORY MODAL
+// =========================================
+function openEditCategoryModal(transactionIndex) {
+    const modal = document.getElementById('modal-edit-category');
+    const transaction = allTransactions[transactionIndex];
+
+    if (!modal || !transaction) {
+        console.error('No se pudo abrir modal', { transactionIndex, transaction });
+        return;
+    }
+
+    // Set hidden index
+    document.getElementById('edit-transaction-index').value = transactionIndex;
+
+    // Set transaction info
+    document.getElementById('edit-transaction-detail').textContent = transaction.Detalle || transaction.Tipo || 'Sin detalle';
+    document.getElementById('edit-transaction-valor').textContent = formatCurrency(Math.abs(parseFloat(transaction.Valor) || 0));
+
+    // Set current category in select
+    const select = document.getElementById('edit-category-select');
+    const currentCategory = transaction.Categoria || '';
+
+    // Check if current category exists in options
+    const optionExists = Array.from(select.options).some(opt => opt.value === currentCategory);
+    if (optionExists) {
+        select.value = currentCategory;
+    } else if (currentCategory) {
+        // Add as custom option
+        const customOption = document.createElement('option');
+        customOption.value = currentCategory;
+        customOption.textContent = currentCategory;
+        select.insertBefore(customOption, select.querySelector('option[value="__nueva__"]'));
+        select.value = currentCategory;
+    }
+
+    // Reset new category input
+    document.getElementById('new-category-container').classList.add('hidden');
+    document.getElementById('new-category-input').value = '';
+
+    // Show modal
+    modal.classList.remove('hidden');
+}
+
+function closeEditCategoryModal() {
+    const modal = document.getElementById('modal-edit-category');
+    if (modal) {
+        modal.classList.add('hidden');
+    }
+}
+
+function onCategorySelectChange() {
+    const select = document.getElementById('edit-category-select');
+    const newCategoryContainer = document.getElementById('new-category-container');
+
+    if (select.value === '__nueva__') {
+        newCategoryContainer.classList.remove('hidden');
+        document.getElementById('new-category-input').focus();
+    } else {
+        newCategoryContainer.classList.add('hidden');
+    }
+}
+
+async function saveEditCategory() {
+    const indexStr = document.getElementById('edit-transaction-index').value;
+    const index = parseInt(indexStr, 10);
+    const select = document.getElementById('edit-category-select');
+    const newCategoryInput = document.getElementById('new-category-input');
+
+    let newCategory = select.value;
+
+    // If new category option selected, use the input value
+    if (newCategory === '__nueva__') {
+        newCategory = newCategoryInput.value.trim();
+        if (!newCategory) {
+            showNotification('Por favor ingresa una categoría', 'warning');
+            return;
+        }
+    }
+
+    if (!newCategory) {
+        showNotification('Por favor selecciona una categoría', 'warning');
+        return;
+    }
+
+    // Update transaction
+    // Update transaction in Supabase
+    const transaction = allTransactions[index];
+    if (transaction && transaction.id) {
+        const { error } = await supabaseClient
+            .from('movimientos')
+            .update({ categoria: newCategory })
+            .eq('id', transaction.id);
+
+        if (error) {
+            console.error('Error updating category:', error);
+            showNotification('Error al actualizar: ' + error.message, 'error');
+            return;
         }
 
-        // =========================================
-        // EDIT CATEGORY MODAL
-        // =========================================
-        function openEditCategoryModal(transactionIndex) {
-            const modal = document.getElementById('modal-edit-category');
-            const transaction = allTransactions[transactionIndex];
+        // Update local state
+        allTransactions[index].Categoria = newCategory;
+        applyFilters();
+        renderAll();
+        closeEditCategoryModal();
+        showNotification(`Categoría actualizada a "${newCategory}"`, 'success');
+    } else {
+        showNotification('Error: Transacción sin ID', 'error');
+    }
+}
 
-            if (!modal || !transaction) {
-                console.error('No se pudo abrir modal', { transactionIndex, transaction });
-                return;
-            }
-
-            // Set hidden index
-            document.getElementById('edit-transaction-index').value = transactionIndex;
-
-            // Set transaction info
-            document.getElementById('edit-transaction-detail').textContent = transaction.Detalle || transaction.Tipo || 'Sin detalle';
-            document.getElementById('edit-transaction-valor').textContent = formatCurrency(Math.abs(parseFloat(transaction.Valor) || 0));
-
-            // Set current category in select
-            const select = document.getElementById('edit-category-select');
-            const currentCategory = transaction.Categoria || '';
-
-            // Check if current category exists in options
-            const optionExists = Array.from(select.options).some(opt => opt.value === currentCategory);
-            if (optionExists) {
-                select.value = currentCategory;
-            } else if (currentCategory) {
-                // Add as custom option
-                const customOption = document.createElement('option');
-                customOption.value = currentCategory;
-                customOption.textContent = currentCategory;
-                select.insertBefore(customOption, select.querySelector('option[value="__nueva__"]'));
-                select.value = currentCategory;
-            }
-
-            // Reset new category input
-            document.getElementById('new-category-container').classList.add('hidden');
-            document.getElementById('new-category-input').value = '';
-
-            // Show modal
-            modal.classList.remove('hidden');
-        }
-
-        function closeEditCategoryModal() {
-            const modal = document.getElementById('modal-edit-category');
-            if (modal) {
-                modal.classList.add('hidden');
-            }
-        }
-
-        function onCategorySelectChange() {
-            const select = document.getElementById('edit-category-select');
-            const newCategoryContainer = document.getElementById('new-category-container');
-
-            if (select.value === '__nueva__') {
-                newCategoryContainer.classList.remove('hidden');
-                document.getElementById('new-category-input').focus();
-            } else {
-                newCategoryContainer.classList.add('hidden');
-            }
-        }
-
-        async function saveEditCategory() {
-            const indexStr = document.getElementById('edit-transaction-index').value;
-            const index = parseInt(indexStr, 10);
-            const select = document.getElementById('edit-category-select');
-            const newCategoryInput = document.getElementById('new-category-input');
-
-            let newCategory = select.value;
-
-            // If new category option selected, use the input value
-            if (newCategory === '__nueva__') {
-                newCategory = newCategoryInput.value.trim();
-                if (!newCategory) {
-                    showNotification('Por favor ingresa una categoría', 'warning');
-                    return;
-                }
-            }
-
-            if (!newCategory) {
-                showNotification('Por favor selecciona una categoría', 'warning');
-                return;
-            }
-
-            // Update transaction
-            // Update transaction in Supabase
-            const transaction = allTransactions[index];
-            if (transaction && transaction.id) {
-                const { error } = await supabaseClient
-                    .from('movimientos')
-                    .update({ categoria: newCategory })
-                    .eq('id', transaction.id);
-
-                if (error) {
-                    console.error('Error updating category:', error);
-                    showNotification('Error al actualizar: ' + error.message, 'error');
-                    return;
-                }
-
-                // Update local state
-                allTransactions[index].Categoria = newCategory;
-                applyFilters();
-                renderAll();
-                closeEditCategoryModal();
-                showNotification(`Categoría actualizada a "${newCategory}"`, 'success');
-            } else {
-                showNotification('Error: Transacción sin ID', 'error');
-            }
-        }
-
-        // =========================================
-        // Initialize on DOM Ready
-        // =========================================
-        document.addEventListener('DOMContentLoaded', () => {
-            // Only init app if user is logged in
-            if (typeof isLoggedIn === 'function' && isLoggedIn()) {
-                initApp();
-            }
-        });
+// =========================================
+// Initialize on DOM Ready
+// =========================================
+document.addEventListener('DOMContentLoaded', () => {
+    // Only init app if user is logged in
+    if (typeof isLoggedIn === 'function' && isLoggedIn()) {
+        initApp();
+    }
+});
