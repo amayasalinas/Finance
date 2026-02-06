@@ -537,21 +537,29 @@ function renderIncomeMembersChart() {
     // Group by member
     const memberTotals = {};
     ingresos.forEach(t => {
-        const member = t.Miembro || 'Desconocido';
-        if (!memberTotals[member]) memberTotals[member] = 0;
-        memberTotals[member] += Math.abs(parseFloat(t.Valor) || 0);
+        const memberId = t.Miembro || 'Desconocido';
+        if (!memberTotals[memberId]) memberTotals[memberId] = 0;
+        memberTotals[memberId] += Math.abs(parseFloat(t.Valor) || 0);
     });
 
-    const labels = Object.keys(memberTotals);
+    // Convert member IDs to names for labels
+    const memberIds = Object.keys(memberTotals);
+    const labels = memberIds.map(memberId => {
+        const memberData = currentFamilyMembers.find(m =>
+            m.id === memberId || m.name.toLowerCase() === memberId.toLowerCase()
+        );
+        return memberData ? memberData.name : memberId;
+    });
+
     const data = Object.values(memberTotals);
     const total = data.reduce((sum, val) => sum + val, 0);
 
     // Get member colors
-    const colors = labels.map(memberKey => {
+    const colors = memberIds.map(memberId => {
         const memberData = currentFamilyMembers.find(m =>
-            m.id === memberKey || m.name.toLowerCase() === memberKey.toLowerCase()
+            m.id === memberId || m.name.toLowerCase() === memberId.toLowerCase()
         );
-        // Extract color from Tailwind class (e.g., "bg-blue-500" -> "rgb(59, 130, 246)")
+        // Extract color from Tailwind class
         const colorMap = {
             'bg-blue-500': 'rgba(59, 130, 246, 0.8)',
             'bg-green-500': 'rgba(34, 197, 94, 0.8)',
@@ -601,13 +609,12 @@ function renderIncomeMembersChart() {
         }
     });
 
-    // Render custom legend
-    legendContainer.innerHTML = labels.map((label, index) => {
+    // Render custom legend (without percentage)
+    legendContainer.innerHTML = memberIds.map((memberId, index) => {
         const value = data[index];
-        const percentage = ((value / total) * 100).toFixed(1);
         const memberData = currentFamilyMembers.find(m =>
-            m.id === label || m.name.toLowerCase() === label.toLowerCase()
-        ) || { name: label, initials: label[0]?.toUpperCase() || '?', color: 'bg-gray-400' };
+            m.id === memberId || m.name.toLowerCase() === memberId.toLowerCase()
+        ) || { name: memberId, initials: memberId[0]?.toUpperCase() || '?', color: 'bg-gray-400' };
 
         return `
             <div class="flex items-center justify-between gap-2">
@@ -615,10 +622,7 @@ function renderIncomeMembersChart() {
                     <div class="size-3 rounded-full ${memberData.color}"></div>
                     <span class="text-sm font-medium">${memberData.name}</span>
                 </div>
-                <div class="flex items-center gap-2">
-                    <span class="text-sm font-bold">${formatCurrency(value)}</span>
-                    <span class="text-xs text-slate-500">(${percentage}%)</span>
-                </div>
+                <span class="text-sm font-bold">${formatCurrency(value)}</span>
             </div>
         `;
     }).join('');
