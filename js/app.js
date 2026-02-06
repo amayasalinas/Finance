@@ -889,22 +889,13 @@ function renderCategoryDonut() {
     }
 
     const gastos = filteredTransactions.filter(t => {
-        const includeAbonoTC = document.getElementById('include-abono-check')?.checked ?? false;
-
+        // In Resumen view, we don't include Abono TC by default
+        // This matches the default behavior of Gastos view (checkbox unchecked)
         const isExpenseType = t.Tipo === 'Compra' || t.Tipo === 'Retiro' || t.Tipo === 'Débito' ||
             t.Tipo === 'Gasto' || t.Tipo === 'Pago' || t.Tipo === 'Cargo';
 
-        const hasAbonoKeyword = (t.Tipo && t.Tipo.toLowerCase().includes('abono')) ||
-            (t.Categoria && t.Categoria.toLowerCase().includes('abono')) ||
-            (t.Detalle && t.Detalle.toLowerCase().includes('abono'));
-
-        const isInterest = (t.Tipo && t.Tipo.toLowerCase().includes('interes')) ||
-            (t.Categoria && t.Categoria.toLowerCase().includes('interes')) ||
-            (t.Detalle && t.Detalle.toLowerCase().includes('interes'));
-
-        const isAbonoPayment = hasAbonoKeyword && !isInterest;
-
-        return isExpenseType || (includeAbonoTC && isAbonoPayment);
+        // We explicitly exclude Abono TC payments from Resumen's category donut
+        return isExpenseType;
     });
     const categorySums = {};
     gastos.forEach(t => {
