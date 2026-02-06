@@ -229,6 +229,10 @@ async function loadData(silent = false) {
         showNotification('Error cargando datos: ' + error.message, 'error');
         allTransactions = [];
     }
+
+    // Initialize filteredTransactions with all data (before filters are applied)
+    filteredTransactions = allTransactions;
+
     renderAll();
 }
 
