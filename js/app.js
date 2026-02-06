@@ -1053,6 +1053,40 @@ function renderIngresosTable() {
         totalElement.textContent = formatCurrency(totalFiltered);
     }
 
+    // Update KPI cards
+    const totalStatEl = document.getElementById('ingresos-total-stat');
+    if (totalStatEl) {
+        totalStatEl.textContent = formatCurrency(totalFiltered);
+    }
+
+    // Calculate average per member
+    const memberTotals = {};
+    ingresos.forEach(t => {
+        const member = t.Miembro || 'Desconocido';
+        if (!memberTotals[member]) memberTotals[member] = 0;
+        memberTotals[member] += parseFloat(t.Valor) || 0;
+    });
+    const avgPerMember = Object.keys(memberTotals).length > 0
+        ? totalFiltered / Object.keys(memberTotals).length
+        : 0;
+    const avgMemberEl = document.getElementById('ingresos-avg-member');
+    if (avgMemberEl) {
+        avgMemberEl.textContent = formatCurrency(avgPerMember);
+    }
+
+    // Find top source (category)
+    const categoryTotals = {};
+    ingresos.forEach(t => {
+        const cat = t.Categoria || t.Tipo || 'Otros';
+        if (!categoryTotals[cat]) categoryTotals[cat] = 0;
+        categoryTotals[cat] += parseFloat(t.Valor) || 0;
+    });
+    const topSource = Object.entries(categoryTotals).sort((a, b) => b[1] - a[1])[0];
+    const topSourceEl = document.getElementById('ingresos-top-source');
+    if (topSourceEl && topSource) {
+        topSourceEl.textContent = topSource[0];
+    }
+
     // Sort by date descending
     ingresos.sort((a, b) => parseDateString(b.Fecha) - parseDateString(a.Fecha));
 
