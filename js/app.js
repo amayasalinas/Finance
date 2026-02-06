@@ -244,15 +244,65 @@ function saveTransactions() {
 
 // =========================================
 // NAVIGATION
-// =========================================
+// =========================================// Navigation
 function setupNavigation() {
-    const navLinks = document.querySelectorAll('#main-nav .nav-link');
+    const navLinks = document.querySelectorAll('.nav-link');
+    const mobileNavLinks = document.querySelectorAll('.mobile-nav-link');
+    const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+    const mobileNav = document.getElementById('mobile-nav');
 
+    // Toggle mobile menu
+    if (mobileMenuBtn && mobileNav) {
+        mobileMenuBtn.addEventListener('click', () => {
+            mobileNav.classList.toggle('hidden');
+        });
+    }
+
+    // Desktop navigation
     navLinks.forEach(link => {
         link.addEventListener('click', (e) => {
             e.preventDefault();
-            const view = link.dataset.view;
-            if (view) navigateTo(view);
+            const targetView = link.getAttribute('data-view');
+            navigateTo(targetView);
+
+            // Update active state
+            navLinks.forEach(l => l.classList.remove('text-primary'));
+            navLinks.forEach(l => l.classList.add('text-slate-600', 'dark:text-slate-300'));
+            link.classList.add('text-primary');
+            link.classList.remove('text-slate-600', 'dark:text-slate-300');
+        });
+    });
+
+    // Mobile navigation
+    mobileNavLinks.forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const targetView = link.getAttribute('data-view');
+            navigateTo(targetView);
+
+            // Close mobile menu
+            if (mobileNav) {
+                mobileNav.classList.add('hidden');
+            }
+
+            // Update active state for mobile links
+            mobileNavLinks.forEach(l => {
+                l.classList.remove('text-primary', 'font-medium');
+                l.classList.add('text-slate-600', 'dark:text-slate-300');
+            });
+            link.classList.add('text-primary', 'font-medium');
+            link.classList.remove('text-slate-600', 'dark:text-slate-300');
+
+            // Update desktop nav as well
+            navLinks.forEach(l => {
+                l.classList.remove('text-primary');
+                l.classList.add('text-slate-600', 'dark:text-slate-300');
+            });
+            const desktopLink = Array.from(navLinks).find(l => l.getAttribute('data-view') === targetView);
+            if (desktopLink) {
+                desktopLink.classList.add('text-primary');
+                desktopLink.classList.remove('text-slate-600', 'dark:text-slate-300');
+            }
         });
     });
 }
