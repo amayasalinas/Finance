@@ -1668,6 +1668,7 @@ function clearIngresosFilters() {
     document.getElementById('filter-year-ingresos').value = 'all';
     document.getElementById('filter-bank-ingresos').value = 'all';
     document.getElementById('filter-category-ingresos').value = 'all';
+    document.getElementById('search-ingresos').value = '';
     applyIngresosFilters();
     showNotification('Filtros de ingresos limpiados', 'info');
 }
