@@ -1101,6 +1101,12 @@ function renderIngresosTable() {
         info.textContent = `Mostrando ${start + 1} a ${end} de ${pagination.ingresos.total} resultados`;
     }
 
+    // Update result count in filter bar
+    const countEl = document.getElementById('ingresos-count');
+    if (countEl) {
+        countEl.textContent = `${ingresos.length} resultado${ingresos.length !== 1 ? 's' : ''}`;
+    }
+
     // Update pagination buttons
     document.getElementById('ingresos-prev').disabled = pagination.ingresos.page <= 1;
     document.getElementById('ingresos-next').disabled = start + pagination.ingresos.perPage >= pagination.ingresos.total;
