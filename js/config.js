@@ -4,7 +4,8 @@
 
 const CONFIG = {
     // Gemini API Configuration
-    GEMINI_API_KEY: 'AIzaSyBBpkDt_iiChGbwengih2Yg4CF9ttlLXRk',
+    // API Key is loaded from config.env.js (which is NOT committed to Git)
+    GEMINI_API_KEY: typeof ENV_CONFIG !== 'undefined' ? ENV_CONFIG.GEMINI_API_KEY : '',
     GEMINI_API_URL: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent',
 
     // Supabase Configuration (if needed)

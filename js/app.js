@@ -551,13 +551,24 @@ function renderKPIs() {
     });
     const topCategory = Object.entries(categorySums).sort((a, b) => b[1] - a[1])[0];
     const topCatEl = document.getElementById('gastos-top-category');
-    if (topCatEl && topCategory) {
-        topCatEl.textContent = `${topCategory[0]} (${formatCurrency(topCategory[1])})`;
+    if (topCatEl) {
+        if (topCategory && topCategory[1] > 0) {
+            topCatEl.textContent = `${topCategory[0]} (${formatCurrency(topCategory[1])})`;
+        } else {
+            topCatEl.textContent = 'Sin datos';
+        }
     }
 
     // Update ingresos view stats
     const ingresosTotal = document.getElementById('ingresos-total-stat');
     if (ingresosTotal) ingresosTotal.textContent = formatCurrency(totalIngresos);
+
+    // Update promedio por miembro
+    const promedioPorMiembro = document.getElementById('ingresos-avg-per-member');
+    if (promedioPorMiembro) {
+        const memberCount = currentFamilyMembers.length || 1;
+        promedioPorMiembro.textContent = formatCurrency(totalIngresos / memberCount);
+    }
 }
 
 // Charts
