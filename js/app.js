@@ -2148,6 +2148,9 @@ function onMemberFilterChange(memberId) {
     renderAll();
 }
 
+// Expose to global scope for inline HTML event handlers
+window.onMemberFilterChange = onMemberFilterChange;
+
 function updateMemberFilterLabel() {
     const label = document.getElementById('member-filter-label');
     if (!label) return;
