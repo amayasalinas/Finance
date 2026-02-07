@@ -1437,17 +1437,56 @@ async function fetchAIRecommendations() {
     });
     const topCategories = Object.entries(categorySpend).sort((a, b) => b[1] - a[1]).slice(0, 5);
 
-    const prompt = `Eres un asesor financiero familiar experto.Analiza estos datos y da 3 recomendaciones CORTAS(máximo 2 líneas cada una) y ACCIONABLES:
+    // Calculate additional financial metrics for expert analysis
+    const savingsRate = totalIngresos > 0 ? ((totalIngresos - totalGastos) / totalIngresos * 100).toFixed(1) : 0;
+    const topCategoriesText = topCategories.map(([cat, val]) => {
+        const percentage = totalGastos > 0 ? ((val / totalGastos) * 100).toFixed(1) : 0;
+        return `${cat}: $${val.toLocaleString('es-CO')} (${percentage}%)`;
+    }).join(', ');
 
-Ingresos del mes: $${totalIngresos.toLocaleString()}
-Gastos del mes: $${totalGastos.toLocaleString()}
-Balance: $${(totalIngresos - totalGastos).toLocaleString()}
-Gastos por categoría: ${topCategories.map(([cat, val]) => `${cat}: $${val.toLocaleString()}`).join(', ')}
+    const prompt = `Actúa como un asesor financiero personal certificado (CFP) con más de 15 años de experiencia en planificación financiera familiar en Colombia.
 
-Responde en español, con emojis, formato: "1. [emoji] [consejo corto]" para cada recomendación.`;
+CONTEXTO FINANCIERO DE LA FAMILIA:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+💰 Ingresos mensuales: $${totalIngresos.toLocaleString('es-CO')} COP
+💳 Gastos mensuales: $${totalGastos.toLocaleString('es-CO')} COP
+📊 Balance: $${(totalIngresos - totalGastos).toLocaleString('es-CO')} COP
+📈 Tasa de ahorro: ${savingsRate}%
+
+DISTRIBUCIÓN DE GASTOS POR CATEGORÍA:
+${topCategoriesText}
+
+TU OBJETIVO:
+Analiza estas finanzas familiares con la profundidad de un experto y proporciona EXACTAMENTE 3 recomendaciones estratégicas y accionables.
+
+CRITERIOS PARA TUS RECOMENDACIONES:
+1. Sean ESPECÍFICAS y basadas en los datos reales presentados
+2. Incluyan cifras concretas cuando sea relevante (ej: "Reduce gastos en X en $200.000")
+3. Sean ACCIONABLES: que la familia pueda implementarlas esta semana
+4. Prioricen por impacto financiero (enfócate en las categorías más altas)
+5. Consideren el contexto colombiano (COP, inflación, ahorro típico)
+6. Sean realistas y alcanzables para una familia promedio
+
+FORMATO OBLIGATORIO:
+Cada recomendación debe seguir este formato EXACTO:
+[emoji relevante] **[Título corto y específico]:** [Explicación de 1-2 líneas con acción concreta]
+
+TONO:
+- Profesional pero cercano
+- Directo y sin rodeos
+- Empático con la realidad financiera familiar
+- Optimista pero realista
+
+PROHIBIDO:
+❌ Recomendaciones genéricas como "ahorra más"
+❌ Usar frases vagas sin cifras
+❌ Consejos que no se basen en los datos
+❌ Recomendaciones imposibles de implementar
+
+Responde SOLO con las 3 recomendaciones numeradas (1., 2., 3.), sin introducción ni conclusión.`;
 
     try {
-        const response = await fetch(`${CONFIG.GEMINI_API_URL}?key = ${CONFIG.GEMINI_API_KEY} `, {
+        const response = await fetch(`${CONFIG.GEMINI_API_URL}?key=${CONFIG.GEMINI_API_KEY}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
