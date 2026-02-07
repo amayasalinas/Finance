@@ -2110,7 +2110,7 @@ function onMemberFilterChange(memberId) {
         }
     } else {
         // Individual member checkbox changed
-        const memberCheckbox = document.getElementById(`member - ${memberId} `);
+        const memberCheckbox = document.getElementById(`member-${memberId}`);
         if (memberCheckbox.checked) {
             // Add member to selectedMembers if not already there
             if (!selectedMembers.includes(memberId)) {
