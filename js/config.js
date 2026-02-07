@@ -4,8 +4,11 @@
 
 const CONFIG = {
     // Gemini API Configuration
-    // API Key is loaded from config.env.js (which is NOT committed to Git)
-    GEMINI_API_KEY: typeof ENV_CONFIG !== 'undefined' ? ENV_CONFIG.GEMINI_API_KEY : '',
+    // In production (Vercel), key is loaded from environment variables automatically
+    // In local development, key is loaded from config.env.js (which is NOT committed to Git)
+    GEMINI_API_KEY: (typeof ENV_CONFIG !== 'undefined' && ENV_CONFIG.GEMINI_API_KEY) ||
+        (typeof process !== 'undefined' && process.env && process.env.GEMINI_API_KEY) ||
+        '',
     GEMINI_API_URL: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent',
 
     // Supabase Configuration (if needed)

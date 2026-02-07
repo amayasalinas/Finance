@@ -1,0 +1,11 @@
+{
+    "rewrites": [
+        {
+            "source": "/api/gemini-key",
+            "destination": "/api/gemini-key.js"
+        }
+    ],
+    "env": {
+        "GEMINI_API_KEY": "@gemini-api-key"
+    }
+}

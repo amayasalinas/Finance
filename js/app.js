@@ -2099,47 +2099,49 @@ function onMemberFilterChange(memberId) {
     const memberCheckboxes = currentFamilyMembers.map(m => document.getElementById(`member-${m.id}`));
 
     if (memberId === 'all') {
-        // If "All" is checked, select all members and clear selectedMembers
+        // If "All" is toggled
         if (allCheckbox.checked) {
+            // Check all members and clear selectedMembers (empty = all)
             selectedMembers = [];
             memberCheckboxes.forEach(cb => { if (cb) cb.checked = true; });
         } else {
-            // If "All" is unchecked, deselect all and set selectedMembers to all IDs
-            selectedMembers = currentFamilyMembers.map(m => m.id);
+            // Uncheck all members (but we'll prevent this with the noneSelected check below)
             memberCheckboxes.forEach(cb => { if (cb) cb.checked = false; });
         }
     } else {
         // Individual member checkbox changed
         const memberCheckbox = document.getElementById(`member-${memberId}`);
-        if (memberCheckbox.checked) {
-            // Add member to selectedMembers if not already there
-            if (!selectedMembers.includes(memberId)) {
-                selectedMembers.push(memberId);
-            }
-        } else {
-            // Remove member from selectedMembers
-            selectedMembers = selectedMembers.filter(id => id !== memberId);
-        }
 
-        // Update "All" checkbox state based on individual selections
-        const allSelected = memberCheckboxes.every(cb => cb && cb.checked);
-        const noneSelected = memberCheckboxes.every(cb => cb && !cb.checked);
+        // CRITICAL: We need to rebuild selectedMembers based on what's CURRENTLY CHECKED
+        // This ensures selectedMembers always reflects the checkbox state
+        const checkedMembers = currentFamilyMembers
+            .filter(m => {
+                const cb = document.getElementById(`member-${m.id}`);
+                return cb && cb.checked;
+            })
+            .map(m => m.id);
+
+        // Check if all members are selected
+        const allSelected = checkedMembers.length === currentFamilyMembers.length;
 
         if (allSelected) {
+            // If all individual checkboxes are checked, check "All" and clear selectedMembers
             allCheckbox.checked = true;
             selectedMembers = []; // Empty means all
-        } else {
-            allCheckbox.checked = false;
-        }
-
-        if (noneSelected) {
-            // If none selected, default to all and show warning
+        } else if (checkedMembers.length === 0) {
+            // If none selected, force select all
             allCheckbox.checked = true;
             selectedMembers = [];
             memberCheckboxes.forEach(cb => { if (cb) cb.checked = true; });
             showNotification('Debe seleccionar al menos un miembro. Se han seleccionado todos por defecto.', 'warning');
+        } else {
+            // Some (but not all) members are selected
+            allCheckbox.checked = false;
+            selectedMembers = checkedMembers; // Set selectedMembers to the checked IDs
         }
     }
+
+    console.log('🔍 Member filter changed:', { memberId, selectedMembers, allChecked: allCheckbox.checked });
 
     updateMemberFilterLabel();
     applyFilters();
