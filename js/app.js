@@ -1112,7 +1112,6 @@ function renderAccounts() {
                     </div>
                 </div>
             </div>
-            <span class="font-bold ${balance >= 0 ? 'text-secondary' : 'text-danger'}">${formatCurrency(balance)}</span>
         </div>
     `;
     }).join('');
@@ -1486,7 +1485,9 @@ PROHIBIDO:
 Responde SOLO con las 3 recomendaciones numeradas (1., 2., 3.), sin introducción ni conclusión.`;
 
     try {
-        const response = await fetch(`${CONFIG.GEMINI_API_URL}?key=${CONFIG.GEMINI_API_KEY}`, {
+        // Add timestamp to prevent caching of AI recommendations
+        const timestamp = Date.now();
+        const response = await fetch(`${CONFIG.GEMINI_API_URL}?key=${CONFIG.GEMINI_API_KEY}&t=${timestamp}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
